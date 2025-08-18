@@ -1,51 +1,32 @@
 import type { User } from "@/types/auth";
 
-export const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "Admin User",
-    email: "admin@empresa.com",
-    role: "admin",
-    createdAt: new Date("2024-01-01"),
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Editor Silva",
-    email: "editor@empresa.com",
-    role: "editor",
-    createdAt: new Date("2024-01-15"),
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "João Visualizador",
-    email: "user@empresa.com",
-    role: "user",
-    createdAt: new Date("2024-02-01"),
-    isActive: true,
-  },
-];
-
 export const authenticateUser = async (
   email: string,
   password: string,
 ): Promise<User | null> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-  // For demo purposes, any password works
-  const user = mockUsers.find((u) => u.email === email && u.isActive);
-  return user || null;
-};
+    if (!response.ok) {
+      // Handle specific error messages from API if needed
+      console.error("Authentication failed:", response.statusText);
+      return null;
+    }
 
-export const hasPermission = (
-  userRole: string,
-  requiredRole: string,
-): boolean => {
-  const roleHierarchy = { admin: 3, editor: 2, user: 1 };
-  return (
-    roleHierarchy[userRole as keyof typeof roleHierarchy] >=
-    roleHierarchy[requiredRole as keyof typeof roleHierarchy]
-  );
+    const user: User = await response.json();
+    // Convert createdAt string to Date object
+    return {
+      ...user,
+      createdAt: new Date(user.createdAt),
+    };
+  } catch (error) {
+    console.error("Error during authentication:", error);
+    return null;
+  }
 };

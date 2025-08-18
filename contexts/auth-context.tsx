@@ -19,7 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedUser = localStorage.getItem("currentUser");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser({ ...parsedUser, createdAt: new Date(parsedUser.createdAt) });
     }
     setIsLoading(false);
   }, []);

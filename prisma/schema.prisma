@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model OperationalPlanning {
+  id                    String   @id @default(uuid()) @map("_id")
+  introduction          Json
+  targets               Json
+  images                Json
+  assignments           Json
+  schedule              Json
+  communications        Json
+  peculiarities         Json
+  medical               Json
+  complementaryMeasures Json     @map("complementary_measures")
+  routes                Json
+  locations             Json
+  status                String
+  priority              String
+  createdBy             String   @map("created_by")
+  responsibleId         String   @map("responsible_id")
+  responsibleName       String   @map("responsible_name")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("operational_plannings")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now()) @map("created_at")
+  isActive  Boolean  @map("is_active")
+
+  @@map("users")
+}

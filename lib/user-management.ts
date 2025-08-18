@@ -1,59 +1,96 @@
 import type { User } from "@/types/auth";
-import { mockUsers } from "./auth-mock";
 
-// Simulate user management operations
-const users: User[] = [...mockUsers];
+// Helper to convert date strings to Date objects
+function parseDates(user: any): User {
+  return {
+    ...user,
+    createdAt: new Date(user.createdAt),
+  };
+}
 
 export const getAllUsers = async (): Promise<User[]> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  return [...users];
+  const response = await fetch("/api/users");
+  if (!response.ok) {
+    throw new Error("Failed to fetch users");
+  }
+  const data: User[] = await response.json();
+  return data.map(parseDates);
 };
 
 export const createUser = async (
-  userData: Omit<User, "id" | "createdAt">,
+  userData: Omit<User, "id" | "createdAt" | "isActive"> & { password: string },
 ): Promise<User> => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
-  const newUser: User = {
-    ...userData,
-    id: (users.length + 1).toString(),
-    createdAt: new Date(),
-  };
-
-  users.push(newUser);
-  return newUser;
+  const response = await fetch("/api/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to create user");
+  }
+  const newUser: User = await response.json();
+  return parseDates(newUser);
 };
 
 export const updateUser = async (
   id: string,
-  userData: Partial<User>,
+  userData: Partial<Omit<User, "createdAt"> & { password?: string }>,
 ): Promise<User | null> => {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-
-  const userIndex = users.findIndex((u) => u.id === id);
-  if (userIndex === -1) return null;
-
-  users[userIndex] = { ...users[userIndex], ...userData };
-  return users[userIndex];
+  const response = await fetch(`/api/users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(userData),
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to update user with ID ${id}`);
+  }
+  const updatedUser: User = await response.json();
+  return parseDates(updatedUser);
 };
 
 export const toggleUserStatus = async (id: string): Promise<User | null> => {
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  // First, get the current user to know the current isActive status
+  const userResponse = await fetch(`/api/users/${id}`);
+  if (!userResponse.ok) {
+    throw new Error(`Failed to fetch user with ID ${id} for status toggle`);
+  }
+  const currentUser: User = await userResponse.json();
 
-  const userIndex = users.findIndex((u) => u.id === id);
-  if (userIndex === -1) return null;
+  // Toggle the isActive status
+  const updatedStatus = !currentUser.isActive;
 
-  users[userIndex].isActive = !users[userIndex].isActive;
-  return users[userIndex];
+  // Send a PUT request to update only the isActive status
+  const response = await fetch(`/api/users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ isActive: updatedStatus }),
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to toggle user status for ID ${id}`);
+  }
+  const updatedUser: User = await response.json();
+  return parseDates(updatedUser);
 };
 
 export const deleteUser = async (id: string): Promise<boolean> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const userIndex = users.findIndex((u) => u.id === id);
-  if (userIndex === -1) return false;
-
-  users.splice(userIndex, 1);
-  return true;
+  const response = await fetch(`/api/users/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete user with ID ${id}`);
+  }
+  return true; // 204 No Content
 };

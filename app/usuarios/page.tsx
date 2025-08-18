@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { Button } from "@/components/ui/button";
@@ -37,11 +37,7 @@ export default function UsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load users
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       logAccess("LOAD_USERS", "/usuarios", true);
@@ -57,7 +53,11 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logAccess, toast]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleCreateUser = () => {
     logAccess("OPEN_CREATE_USER_FORM", "/usuarios", true);
@@ -71,7 +71,9 @@ export default function UsersPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmitUser = async (userData: any) => {
+  const handleSubmitUser = async (
+    userData: Omit<User, "id" | "createdAt"> & { password?: string },
+  ) => {
     try {
       setIsSubmitting(true);
 
@@ -85,7 +87,17 @@ export default function UsersPage() {
         });
       } else {
         // Create new user
-        await createUser(userData);
+        // Ensure password is provided for new user creation
+        if (!userData.password) {
+          toast({
+            title: "Erro",
+            description: "A senha é obrigatória para novos usuários.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        await createUser(userData as Omit<User, "id" | "createdAt"> & { password: string });
         logAccess("CREATE_USER", "/usuarios", true);
         toast({
           title: "Sucesso",
@@ -96,6 +108,7 @@ export default function UsersPage() {
       setIsModalOpen(false);
       loadUsers();
     } catch (error) {
+      console.error("Failed to save user:", error);
       const action = editingUser ? "UPDATE_USER" : "CREATE_USER";
       const resource = editingUser
         ? `/usuarios/${editingUser.id}`
