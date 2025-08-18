@@ -1,37 +1,37 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { TrendingUp, TrendingDown, Minus } from "lucide-react"
-import type { DashboardMetric } from "@/types/dashboard"
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { DashboardMetric } from "@/types/dashboard";
 
 interface MetricCardProps {
-  metric: DashboardMetric
+  metric: DashboardMetric;
 }
 
 export function MetricCard({ metric }: MetricCardProps) {
   const getTrendIcon = () => {
-    if (!metric.change) return null
+    if (!metric.change) return null;
 
     switch (metric.changeType) {
       case "increase":
-        return <TrendingUp className="h-4 w-4 text-green-600" />
+        return <TrendingUp className="h-4 w-4 text-green-600" />;
       case "decrease":
-        return <TrendingDown className="h-4 w-4 text-red-600" />
+        return <TrendingDown className="h-4 w-4 text-red-600" />;
       default:
-        return <Minus className="h-4 w-4 text-gray-600" />
+        return <Minus className="h-4 w-4 text-gray-600" />;
     }
-  }
+  };
 
   const getTrendColor = () => {
     switch (metric.changeType) {
       case "increase":
-        return "text-green-600"
+        return "text-green-600";
       case "decrease":
-        return "text-red-600"
+        return "text-red-600";
       default:
-        return "text-gray-600"
+        return "text-gray-600";
     }
-  }
+  };
 
   return (
     <Card>
@@ -49,8 +49,12 @@ export function MetricCard({ metric }: MetricCardProps) {
             </span>
           </div>
         )}
-        {metric.description && <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>}
+        {metric.description && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {metric.description}
+          </p>
+        )}
       </CardContent>
     </Card>
-  )
+  );
 }

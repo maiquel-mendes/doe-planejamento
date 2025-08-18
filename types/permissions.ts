@@ -10,19 +10,19 @@ export type Permission =
   | "planning.manage_progress"
   | "dashboard.view"
   | "dashboard.admin"
-  | "system.audit"
+  | "system.audit";
 
 export type RolePermissions = {
-  [key: string]: Permission[]
-}
+  [key: string]: Permission[];
+};
 
 export interface AccessLog {
-  id: string
-  userId: string
-  userName: string
-  action: string
-  resource: string
-  timestamp: Date
-  success: boolean
-  details?: string
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  resource: string;
+  timestamp: Date;
+  success: boolean;
+  details?: string;
 }

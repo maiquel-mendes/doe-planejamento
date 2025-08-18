@@ -1,8 +1,5 @@
-"use client"
-import type { User } from "@/types/auth"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+"use client";
+import { Edit, UserCheck, UserX } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,50 +10,66 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Edit, UserX, UserCheck } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { User } from "@/types/auth";
 
 interface UserTableProps {
-  users: User[]
-  onEditUser: (user: User) => void
-  onToggleStatus: (userId: string) => void
-  onDeleteUser: (userId: string) => void
-  isLoading?: boolean
+  users: User[];
+  onEditUser: (user: User) => void;
+  onToggleStatus: (userId: string) => void;
+  onDeleteUser: (userId: string) => void;
+  isLoading?: boolean;
 }
 
-export function UserTable({ users, onEditUser, onToggleStatus, onDeleteUser, isLoading }: UserTableProps) {
+export function UserTable({
+  users,
+  onEditUser,
+  onToggleStatus,
+  onDeleteUser,
+  isLoading,
+}: UserTableProps) {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "admin":
-        return "destructive"
+        return "destructive";
       case "editor":
-        return "default"
+        return "default";
       case "user":
-        return "secondary"
+        return "secondary";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
       case "admin":
-        return "Administrador"
+        return "Administrador";
       case "editor":
-        return "Editor"
+        return "Editor";
       case "user":
-        return "Usuário"
+        return "Usuário";
       default:
-        return role
+        return role;
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-muted-foreground">Carregando usuários...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -78,19 +91,37 @@ export function UserTable({ users, onEditUser, onToggleStatus, onDeleteUser, isL
               <TableCell className="font-medium">{user.name}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>
-                <Badge variant={getRoleBadgeVariant(user.role)}>{getRoleLabel(user.role)}</Badge>
+                <Badge variant={getRoleBadgeVariant(user.role)}>
+                  {getRoleLabel(user.role)}
+                </Badge>
               </TableCell>
               <TableCell>
-                <Badge variant={user.isActive ? "default" : "secondary"}>{user.isActive ? "Ativo" : "Inativo"}</Badge>
+                <Badge variant={user.isActive ? "default" : "secondary"}>
+                  {user.isActive ? "Ativo" : "Inativo"}
+                </Badge>
               </TableCell>
-              <TableCell>{user.createdAt.toLocaleDateString("pt-BR")}</TableCell>
+              <TableCell>
+                {user.createdAt.toLocaleDateString("pt-BR")}
+              </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onEditUser(user)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEditUser(user)}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => onToggleStatus(user.id)}>
-                    {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onToggleStatus(user.id)}
+                  >
+                    {user.isActive ? (
+                      <UserX className="h-4 w-4" />
+                    ) : (
+                      <UserCheck className="h-4 w-4" />
+                    )}
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -102,12 +133,17 @@ export function UserTable({ users, onEditUser, onToggleStatus, onDeleteUser, isL
                       <AlertDialogHeader>
                         <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Tem certeza que deseja excluir o usuário {user.name}? Esta ação não pode ser desfeita.
+                          Tem certeza que deseja excluir o usuário {user.name}?
+                          Esta ação não pode ser desfeita.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDeleteUser(user.id)}>Excluir</AlertDialogAction>
+                        <AlertDialogAction
+                          onClick={() => onDeleteUser(user.id)}
+                        >
+                          Excluir
+                        </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -118,5 +154,5 @@ export function UserTable({ users, onEditUser, onToggleStatus, onDeleteUser, isL
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

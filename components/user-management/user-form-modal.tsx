@@ -1,12 +1,9 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import type { User, UserRole } from "@/types/auth"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -14,25 +11,40 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import type { User, UserRole } from "@/types/auth";
 
 interface UserFormModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (userData: Omit<User, "id" | "createdAt"> | Partial<User>) => void
-  user?: User | null
-  isLoading?: boolean
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (userData: Omit<User, "id" | "createdAt"> | Partial<User>) => void;
+  user?: User | null;
+  isLoading?: boolean;
 }
 
-export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: UserFormModalProps) {
+export function UserFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  user,
+  isLoading,
+}: UserFormModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     role: "user" as UserRole,
     isActive: true,
-  })
+  });
 
   useEffect(() => {
     if (user) {
@@ -41,29 +53,31 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
         email: user.email,
         role: user.role,
         isActive: user.isActive,
-      })
+      });
     } else {
       setFormData({
         name: "",
         email: "",
         role: "user",
         isActive: true,
-      })
+      });
     }
-  }, [user, isOpen])
+  }, [user, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit(formData)
-  }
+    e.preventDefault();
+    onSubmit(formData);
+  };
 
-  const isEditing = !!user
+  const isEditing = !!user;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Editar Usuário" : "Novo Usuário"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Edite as informações do usuário abaixo."
@@ -77,7 +91,9 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Nome completo"
                 required
               />
@@ -88,7 +104,9 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 placeholder="email@empresa.com"
                 required
               />
@@ -97,7 +115,9 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
               <Label htmlFor="role">Perfil</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
+                onValueChange={(value: UserRole) =>
+                  setFormData({ ...formData, role: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o perfil" />
@@ -113,7 +133,9 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
               <Switch
                 id="isActive"
                 checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isActive: checked })
+                }
               />
               <Label htmlFor="isActive">Usuário ativo</Label>
             </div>
@@ -129,5 +151,5 @@ export function UserFormModal({ isOpen, onClose, onSubmit, user, isLoading }: Us
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

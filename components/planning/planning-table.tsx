@@ -1,10 +1,6 @@
-"use client"
+"use client";
 
-import type { Planning } from "@/types/planning"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Edit, Eye, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,17 +11,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Edit, Eye, Trash2 } from "lucide-react"
-import type { OperationalPlanning } from "@/types/operational-planning"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { OperationalPlanning } from "@/types/operational-planning";
 
 interface PlanningTableProps {
-  plannings: OperationalPlanning[]
-  onViewPlanning: (planning: OperationalPlanning) => void
-  onEditPlanning: (planning: OperationalPlanning) => void
-  onDeletePlanning: (planningId: string) => void
-  canEdit: boolean
-  isLoading?: boolean
+  plannings: OperationalPlanning[];
+  onViewPlanning: (planning: OperationalPlanning) => void;
+  onEditPlanning: (planning: OperationalPlanning) => void;
+  onDeletePlanning: (planningId: string) => void;
+  canEdit: boolean;
+  isLoading?: boolean;
 }
 
 export function PlanningTable({
@@ -39,69 +44,69 @@ export function PlanningTable({
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "active":
-        return "default"
+        return "default";
       case "completed":
-        return "secondary"
+        return "secondary";
       case "draft":
-        return "outline"
+        return "outline";
       case "cancelled":
-        return "destructive"
+        return "destructive";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
       case "critical":
-        return "destructive"
+        return "destructive";
       case "high":
-        return "destructive"
+        return "destructive";
       case "medium":
-        return "default"
+        return "default";
       case "low":
-        return "secondary"
+        return "secondary";
       default:
-        return "outline"
+        return "outline";
     }
-  }
+  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "active":
-        return "Ativo"
+        return "Ativo";
       case "completed":
-        return "Concluído"
+        return "Concluído";
       case "draft":
-        return "Rascunho"
+        return "Rascunho";
       case "cancelled":
-        return "Cancelado"
+        return "Cancelado";
       default:
-        return status
+        return status;
     }
-  }
+  };
 
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
       case "critical":
-        return "Crítica"
+        return "Crítica";
       case "high":
-        return "Alta"
+        return "Alta";
       case "medium":
-        return "Média"
+        return "Média";
       case "low":
-        return "Baixa"
+        return "Baixa";
       default:
-        return priority
+        return priority;
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-muted-foreground">Carregando planejamentos...</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -114,7 +119,7 @@ export function PlanningTable({
             <TableHead>Status</TableHead>
             <TableHead>Prioridade</TableHead>
             <TableHead>Data de Operação</TableHead>
-            <TableHead >Ações</TableHead>
+            <TableHead>Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,13 +127,19 @@ export function PlanningTable({
             <TableRow key={planning.id}>
               <TableCell>
                 <div>
-                  <div className="font-medium">{planning.introduction?.serviceOrderNumber}</div>
-                  <div className="text-sm text-muted-foreground truncate max-w-xs">{planning.introduction?.description}</div>
+                  <div className="font-medium">
+                    {planning.introduction?.serviceOrderNumber}
+                  </div>
+                  <div className="text-sm text-muted-foreground truncate max-w-xs">
+                    {planning.introduction?.description}
+                  </div>
                 </div>
               </TableCell>
               <TableCell>{planning.responsibleName}</TableCell>
               <TableCell>
-                <Badge variant={getStatusBadgeVariant(planning.status)}>{getStatusLabel(planning.status)}</Badge>
+                <Badge variant={getStatusBadgeVariant(planning.status)}>
+                  {getStatusLabel(planning.status)}
+                </Badge>
               </TableCell>
               <TableCell>
                 <Badge variant={getPriorityBadgeVariant(planning.priority)}>
@@ -141,14 +152,22 @@ export function PlanningTable({
                   <div>{planning.introduction?.operationDate}</div>
                 </div>
               </TableCell>
-              <TableCell >
+              <TableCell>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={() => onViewPlanning(planning)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onViewPlanning(planning)}
+                  >
                     <Eye className="h-4 w-4" />
                   </Button>
                   {canEdit && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => onEditPlanning(planning)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditPlanning(planning)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -159,15 +178,22 @@ export function PlanningTable({
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              Confirmar exclusão
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Tem certeza que deseja excluir o planejamento "{planning.introduction.serviceOrderNumber}"? Esta ação não pode ser
-                              desfeita.
+                              Tem certeza que deseja excluir o planejamento "
+                              {planning.introduction.serviceOrderNumber}"? Esta
+                              ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDeletePlanning(planning.id)}>Excluir</AlertDialogAction>
+                            <AlertDialogAction
+                              onClick={() => onDeletePlanning(planning.id)}
+                            >
+                              Excluir
+                            </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -180,5 +206,5 @@ export function PlanningTable({
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { usePermissions } from "@/hooks/use-permissions"
-import type { Permission } from "@/types/permissions"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ShieldX } from "lucide-react"
+import { ShieldX } from "lucide-react";
+import type { ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { usePermissions } from "@/hooks/use-permissions";
+import type { Permission } from "@/types/permissions";
 
 interface PermissionGuardProps {
-  children: ReactNode
-  permission?: Permission
-  permissions?: Permission[]
-  requireAll?: boolean
-  fallback?: ReactNode
-  showError?: boolean
+  children: ReactNode;
+  permission?: Permission;
+  permissions?: Permission[];
+  requireAll?: boolean;
+  fallback?: ReactNode;
+  showError?: boolean;
 }
 
 export function PermissionGuard({
@@ -23,41 +23,47 @@ export function PermissionGuard({
   fallback,
   showError = true,
 }: PermissionGuardProps) {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, user } = usePermissions()
+  const { hasPermission, hasAnyPermission, hasAllPermissions, user } =
+    usePermissions();
 
   if (!user) {
     return showError ? (
       <Alert variant="destructive">
         <ShieldX className="h-4 w-4" />
-        <AlertDescription>Você precisa estar logado para acessar este conteúdo.</AlertDescription>
+        <AlertDescription>
+          Você precisa estar logado para acessar este conteúdo.
+        </AlertDescription>
       </Alert>
-    ) : null
+    ) : null;
   }
 
-  let hasAccess = false
+  let hasAccess = false;
 
   if (permission) {
-    hasAccess = hasPermission(permission)
+    hasAccess = hasPermission(permission);
   } else if (permissions.length > 0) {
-    hasAccess = requireAll ? hasAllPermissions(permissions) : hasAnyPermission(permissions)
+    hasAccess = requireAll
+      ? hasAllPermissions(permissions)
+      : hasAnyPermission(permissions);
   } else {
-    hasAccess = true // No permissions required
+    hasAccess = true; // No permissions required
   }
 
   if (!hasAccess) {
     if (fallback) {
-      return <>{fallback}</>
+      return <>{fallback}</>;
     }
 
     return showError ? (
       <Alert variant="destructive">
         <ShieldX className="h-4 w-4" />
         <AlertDescription>
-          Você não tem permissão para acessar este conteúdo. Entre em contato com o administrador se necessário.
+          Você não tem permissão para acessar este conteúdo. Entre em contato
+          com o administrador se necessário.
         </AlertDescription>
       </Alert>
-    ) : null
+    ) : null;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

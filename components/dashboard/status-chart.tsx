@@ -1,30 +1,56 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
-import type { ChartData } from "@/types/dashboard"
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import type { ChartData } from "@/types/dashboard";
 
 interface StatusChartProps {
-  data: ChartData[]
-  title?: string
-  description?: string
+  data: ChartData[];
+  title?: string;
+  description?: string;
 }
 
-export function StatusChart({ data, title = "Distribuição por Status", description }: StatusChartProps) {
-  const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
+export function StatusChart({
+  data,
+  title = "Distribuição por Status",
+  description,
+}: StatusChartProps) {
+  const COLORS = [
+    "#3b82f6",
+    "#10b981",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#06b6d4",
+  ];
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0]
+      const data = payload[0];
       return (
         <div className="bg-background border rounded-lg p-2 shadow-md">
           <p className="text-sm font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">Quantidade: {data.value}</p>
+          <p className="text-sm text-muted-foreground">
+            Quantidade: {data.value}
+          </p>
         </div>
-      )
+      );
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <Card>
@@ -40,9 +66,20 @@ export function StatusChart({ data, title = "Distribuição por Status", descrip
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" labelLine={false} outerRadius={80} fill="#8884d8" dataKey="value">
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color || COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
@@ -52,5 +89,5 @@ export function StatusChart({ data, title = "Distribuição por Status", descrip
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

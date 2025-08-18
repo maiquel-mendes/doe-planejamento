@@ -1,20 +1,21 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import { AuthProvider } from "@/contexts/auth-context"
-import "./globals.css"
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import type { Metadata } from "next";
+import type React from "react";
+import { AuthProvider } from "@/contexts/auth-context";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Sistema de Planejamento Operacional",
-  description: "Aplicação para gestão de planejamento operacional com controle de perfis",
+  description:
+    "Aplicação para gestão de planejamento operacional com controle de perfis",
   generator: "v0.app",
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="pt-BR">
@@ -31,5 +32,5 @@ html {
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
-  )
+  );
 }
