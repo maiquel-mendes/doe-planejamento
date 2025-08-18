@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { OperationalPlanningDetailModal } from "@/components/planning/operational-planning-detail-modal";
@@ -45,7 +45,7 @@ export default function PlanningPage() {
   const canDelete = hasPermission("planning.delete");
 
   // Load plannings
-  async function loadPlannings() {
+  const loadPlannings = useCallback(async () => {
     try {
       setIsLoading(true);
       logAccess("LOAD_PLANNINGS", "/planejamento", true);
@@ -67,13 +67,11 @@ export default function PlanningPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [logAccess, toast]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   useEffect(() => {
     loadPlannings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadPlannings]);
 
   const handleCreatePlanning = () => {
     if (!canCreate) return;

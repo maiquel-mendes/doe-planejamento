@@ -1067,7 +1067,6 @@ export function OperationalPlanningFormModal({
                             value={newSearchObject}
                             onChange={(e) => setNewSearchObject(e.target.value)}
                             placeholder="Adicionar objeto de busca"
-
                           />
                           <Button
                             type="button"
@@ -1129,11 +1128,12 @@ export function OperationalPlanningFormModal({
                     <div className="grid gap-2">
                       <Label>Socorristas</Label>
                       <div className="space-y-2">
-
                         <div className="flex gap-2">
                           <Input
                             value={formData.medical.medic}
-                            onChange={(e) => handleMedicalChange("medic", e.target.value)}
+                            onChange={(e) =>
+                              handleMedicalChange("medic", e.target.value)
+                            }
                             placeholder="Nome do socorrista"
                           />
                         </div>
@@ -1232,7 +1232,6 @@ export function OperationalPlanningFormModal({
                           value={newMeasure}
                           onChange={(e) => setNewMeasure(e.target.value)}
                           placeholder="Adicionar medida complementar"
-
                         />
                         <Button
                           type="button"

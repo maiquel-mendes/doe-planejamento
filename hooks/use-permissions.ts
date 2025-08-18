@@ -9,6 +9,7 @@ import {
   logAccess,
 } from "@/lib/permissions";
 import type { Permission } from "@/types/permissions";
+import { useCallback } from "react";
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -33,16 +34,14 @@ export function usePermissions() {
     return getUserPermissions(user.role);
   };
 
-  const logUserAccess = (
-    action: string,
-    resource: string,
-    success: boolean,
-    details?: string,
-  ) => {
-    if (user) {
-      logAccess(user, action, resource, success, details);
-    }
-  };
+  const logUserAccess = useCallback(
+    (action: string, resource: string, success: boolean, details?: string) => {
+      if (user) {
+        logAccess(user, action, resource, success, details);
+      }
+    },
+    [user],
+  );
 
   return {
     user,

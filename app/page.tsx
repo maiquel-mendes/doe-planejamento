@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/auth-context";
 import { usePermissions } from "@/hooks/use-permissions";
 
+
 export default function HomePage() {
   const { user, logout } = useAuth();
   const { hasPermission, logAccess } = usePermissions();
@@ -187,6 +188,8 @@ export default function HomePage() {
             </Link>
           </PermissionGuard>
         </div>
+
+        
 
         <Card>
           <CardHeader>

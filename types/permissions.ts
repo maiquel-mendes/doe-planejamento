@@ -10,7 +10,8 @@ export type Permission =
   | "planning.manage_progress"
   | "dashboard.view"
   | "dashboard.admin"
-  | "system.audit";
+  | "system.audit"
+  | "user.manage";
 
 export type RolePermissions = {
   [key: string]: Permission[];
