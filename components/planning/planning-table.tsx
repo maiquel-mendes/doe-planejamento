@@ -17,11 +17,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Edit, Eye, Trash2 } from "lucide-react"
+import type { OperationalPlanning } from "@/types/operational-planning"
 
 interface PlanningTableProps {
-  plannings: Planning[]
-  onViewPlanning: (planning: Planning) => void
-  onEditPlanning: (planning: Planning) => void
+  plannings: OperationalPlanning[]
+  onViewPlanning: (planning: OperationalPlanning) => void
+  onEditPlanning: (planning: OperationalPlanning) => void
   onDeletePlanning: (planningId: string) => void
   canEdit: boolean
   isLoading?: boolean
@@ -112,9 +113,8 @@ export function PlanningTable({
             <TableHead>Responsável</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Prioridade</TableHead>
-            <TableHead>Progresso</TableHead>
-            <TableHead>Período</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            <TableHead>Data de Operação</TableHead>
+            <TableHead >Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,8 +122,8 @@ export function PlanningTable({
             <TableRow key={planning.id}>
               <TableCell>
                 <div>
-                  <div className="font-medium">{planning.title}</div>
-                  <div className="text-sm text-muted-foreground truncate max-w-xs">{planning.description}</div>
+                  <div className="font-medium">{planning.introduction?.serviceOrderNumber}</div>
+                  <div className="text-sm text-muted-foreground truncate max-w-xs">{planning.introduction?.description}</div>
                 </div>
               </TableCell>
               <TableCell>{planning.responsibleName}</TableCell>
@@ -135,20 +135,14 @@ export function PlanningTable({
                   {getPriorityLabel(planning.priority)}
                 </Badge>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Progress value={planning.progress} className="w-16" />
-                  <span className="text-sm text-muted-foreground">{planning.progress}%</span>
-                </div>
-              </TableCell>
+
               <TableCell>
                 <div className="text-sm">
-                  <div>{planning.startDate.toLocaleDateString("pt-BR")}</div>
-                  <div className="text-muted-foreground">até {planning.endDate.toLocaleDateString("pt-BR")}</div>
+                  <div>{planning.introduction?.operationDate}</div>
                 </div>
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
+              <TableCell >
+                <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => onViewPlanning(planning)}>
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -167,7 +161,7 @@ export function PlanningTable({
                           <AlertDialogHeader>
                             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Tem certeza que deseja excluir o planejamento "{planning.title}"? Esta ação não pode ser
+                              Tem certeza que deseja excluir o planejamento "{planning.introduction.serviceOrderNumber}"? Esta ação não pode ser
                               desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>

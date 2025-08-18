@@ -32,7 +32,7 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {planning.introduction.operationType} - {planning.introduction.serviceOrder}
+            {planning.introduction.operationType} - {planning.introduction.serviceOrderNumber}
           </DialogTitle>
           <DialogDescription>
             {planning.introduction.operationDate} às {planning.introduction.operationTime} -{" "}
@@ -60,27 +60,27 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Ordem de Serviço</label>
-                  <p className="text-sm text-muted-foreground">{planning.introduction.serviceOrder}</p>
+                  <span className="text-sm font-medium">Ordem de Serviço</span>
+                  <p className="text-sm text-muted-foreground">{planning.introduction.serviceOrderNumber}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Tipo de Operação</label>
+                  <span className="text-sm font-medium">Tipo de Operação</span>
                   <p className="text-sm text-muted-foreground">{planning.introduction.operationType}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Unidade de Apoio</label>
+                  <span className="text-sm font-medium">Unidade de Apoio</span>
                   <p className="text-sm text-muted-foreground">{planning.introduction.supportUnit}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Tipo de Mandado</label>
+                  <span className="text-sm font-medium">Tipo de Mandado</span>
                   <p className="text-sm text-muted-foreground">{planning.introduction.mandateType}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Data da Operação</label>
+                  <span className="text-sm font-medium">Data da Operação</span>
                   <p className="text-sm text-muted-foreground">{planning.introduction.operationDate}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Horário da Operação</label>
+                  <span className="text-sm font-medium">Horário da Operação</span>
                   <p className="text-sm text-muted-foreground">{planning.introduction.operationTime}</p>
                 </div>
               </CardContent>
@@ -101,8 +101,8 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
                   <CardContent className="space-y-2">
                     <p className="text-sm">{target.description}</p>
                     {target.observations && <p className="text-sm text-muted-foreground">{target.observations}</p>}
-                    {planning.addresses
-                      .filter((addr) => addr.targetId === target.id)
+                    {planning.targets
+                      .filter((addr) => addr.id === target.id)
                       .map((address) => (
                         <div key={address.id} className="mt-3 p-3 bg-muted/50 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
@@ -110,9 +110,9 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
                             <span className="font-medium">Endereço</span>
                           </div>
                           <p className="text-sm">{address.address}</p>
-                          {address.complement && <p className="text-sm text-muted-foreground">{address.complement}</p>}
+                          {address.address && <p className="text-sm text-muted-foreground">{address.description}</p>}
                           <p className="text-sm text-muted-foreground">
-                            {address.city} - {address.state}
+                            {address.description} - {address.alias}
                           </p>
                           {address.coordinates && (
                             <p className="text-xs text-muted-foreground mt-1">{address.coordinates}</p>
@@ -135,7 +135,7 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {planning.functionsBoard.map((func) => (
+                  {planning.assignments.map((func) => (
                     <div key={func.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-4">
                         <div>
@@ -145,7 +145,7 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">{func.vehiclePrefix}</Badge>
-                        {func.observations && <p className="text-xs text-muted-foreground mt-1">{func.observations}</p>}
+                        {func.functionId && <p className="text-xs text-muted-foreground mt-1">{func.order}</p>}
                       </div>
                     </div>
                   ))}
@@ -187,12 +187,12 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {planning.communications.map((comm) => (
-                    <div key={comm.id} className="p-3 bg-muted/50 rounded-lg">
-                      <p className="font-medium">{comm.type}</p>
-                      <p className="text-sm text-muted-foreground">{comm.description}</p>
+                  {
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="font-medium">{planning.communications.frequency}</p>
+                      <p className="text-sm text-muted-foreground">{planning.communications.vehicleCall}</p>
                     </div>
-                  ))}
+                  }
                 </div>
               </CardContent>
             </Card>
@@ -206,12 +206,12 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {planning.peculiarities.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
+                  {
+                    <li className="flex items-start gap-2">
                       <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
-                      <span className="text-sm">{item}</span>
+                      <span className="text-sm">{planning.peculiarities.observations}</span>
                     </li>
-                  ))}
+                  }
                 </ul>
               </CardContent>
             </Card>
@@ -226,14 +226,9 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {planning.aph.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0" />
-                      <span className="text-sm">{item}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="space-y-3">
+
+                </div>
               </CardContent>
             </Card>
 
@@ -246,12 +241,12 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {planning.complementaryMeasures.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
-                      <span className="text-sm">{item}</span>
+                  {
+                    <li className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
+                      <span className="text-sm">{planning.medical.medic}</span>
                     </li>
-                  ))}
+                  }
                 </ul>
               </CardContent>
             </Card>
@@ -269,7 +264,7 @@ export function OperationalPlanningDetailModal({ isOpen, onClose, planning }: Op
                     {planning.routes.map((route) => (
                       <div key={route.id} className="p-3 bg-muted/50 rounded-lg">
                         <p className="font-medium">
-                          {route.from} → {route.to}
+                          {route.origin} → {route.destination}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {route.distance} / {route.duration}

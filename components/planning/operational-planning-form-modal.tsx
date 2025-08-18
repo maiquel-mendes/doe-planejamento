@@ -1,12 +1,17 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect } from "react"
-import type { OperationalPlanning, OperationalPlanningFormData } from "@/types/planning"
+import type {
+  OperationalPlanning,
+  Target,
+  Route,
+  Location,
+  OperationalAssignment,
+  TimeSchedule,
+} from "@/types/operational-planning"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -15,11 +20,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { X, Plus, Upload } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { Plus, Upload, X } from "lucide-react"
 import { mockUsers } from "@/lib/auth-mock"
 import { mockFunctions } from "@/lib/operational-functions"
 import { mockVehicles } from "@/lib/vehicles"
@@ -27,10 +44,47 @@ import { mockVehicles } from "@/lib/vehicles"
 interface OperationalPlanningFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: OperationalPlanningFormData) => void
+  onSubmit: (data: OperationalPlanning) => void
   planning?: OperationalPlanning | null
   isLoading?: boolean
 }
+
+// --- Helper: blank objects with all required fields ---
+const blankTarget = (): Target => ({
+  id: "",
+  name: "",
+  address: "",
+})
+const blankRoute = (): Route => ({
+  id: "",
+  name: "",
+  origin: "",
+  destination: "",
+  distance: "",
+  duration: "",
+})
+const blankLocation = (): Location => ({
+  id: "",
+  name: "",
+  address: "",
+  coordinates: "",
+  type: "alvo",
+})
+
+const blankAssignment = (): OperationalAssignment => ({
+  id: "",
+  operatorId: "",
+  operatorName: "",
+  functionId: "",
+  functionName: "",
+  order: 0,
+})
+
+const blankSchedule = (): TimeSchedule => ({
+  id: "",
+  time: "",
+  activity: "",
+})
 
 export function OperationalPlanningFormModal({
   isOpen,
@@ -39,7 +93,8 @@ export function OperationalPlanningFormModal({
   planning,
   isLoading,
 }: OperationalPlanningFormModalProps) {
-  const [formData, setFormData] = useState<OperationalPlanningFormData>({
+  // --- State ---
+  const [formData, setFormData] = useState<OperationalPlanning>(() => ({
     introduction: {
       serviceOrderNumber: "",
       operationType: "",
@@ -49,21 +104,10 @@ export function OperationalPlanningFormModal({
       operationDate: "",
       operationTime: "",
     },
-    status: "draft",
-    priority: "medium",
-    responsibleId: "",
-    title: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    objectives: [],
-    resources: [],
-    budget: undefined,
-    // Seções específicas do planejamento operacional
     targets: [],
-    addresses: [],
     images: [],
-    functionsBoard: [],
+    id: "",
+    assignments: [],
     schedule: [],
     communications: {
       vehicleCall: "",
@@ -75,90 +119,84 @@ export function OperationalPlanningFormModal({
       observations: "",
       risks: "",
     },
-    aph: {
-      medics: [],
-      equipment: [],
-      procedures: "",
-      hospital: "",
-      hospitalPhone: "",
+    medical: {
+      medic: "",
+      medicId: "",
+      vehicleForTransport: "",
+      hospitalContact: "",
+      procedures: ""
     },
     complementaryMeasures: [],
     routes: [],
     locations: [],
-  })
+    status: "draft",
+    priority: "medium",
+    createdBy: "",
+    responsibleId: "",
+    responsibleName: "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }))
 
-  const [newObjective, setNewObjective] = useState("")
-  const [newResource, setNewResource] = useState("")
-  const [newTarget, setNewTarget] = useState({ name: "", description: "" })
-  const [newAddress, setNewAddress] = useState({ location: "", coordinates: "", reference: "" })
-  const [newScheduleItem, setNewScheduleItem] = useState({ time: "", activity: "" })
-  const [newSearchObject, setNewSearchObject] = useState("")
-  const [newMedic, setNewMedic] = useState("")
-  const [newEquipment, setNewEquipment] = useState("")
+  // --- Temporary states ---
+  const [newTarget, setNewTarget] = useState<Target>(blankTarget())
+  const [newRoute, setNewRoute] = useState<Route>(blankRoute())
+  const [newLocation, setNewLocation] = useState<Location>(blankLocation())
+  const [newAssignment, setNewAssignment] = useState<OperationalAssignment>(blankAssignment())
+  const [newScheduleItem, setNewScheduleItem] = useState<TimeSchedule>(blankSchedule())
   const [newMeasure, setNewMeasure] = useState("")
-  const [newRoute, setNewRoute] = useState({ from: "", to: "", distance: "", time: "" })
-  const [newLocation, setNewLocation] = useState({ name: "", coordinates: "", reference: "" })
+  const [newSearchObject, setNewSearchObject] = useState("")
 
+  // --- Effect: load planning ---
   useEffect(() => {
     if (planning) {
       setFormData({
-        title: planning.title,
-        description: planning.description || "",
-        startDate: planning.startDate ? planning.startDate.toISOString().split("T")[0] : "",
-        endDate: planning.endDate ? planning.endDate.toISOString().split("T")[0] : "",
-        status: planning.status,
-        priority: planning.priority,
-        responsibleId: planning.responsibleId,
-        objectives: planning.objectives || [],
-        resources: planning.resources || [],
-        budget: planning.budget,
-        introduction: planning.introduction || {
-          serviceOrderNumber: "",
-          operationType: "",
-          description: "",
-          supportUnit: "",
-          mandateType: "",
-          operationDate: "",
-          operationTime: "",
+        id: planning.id,
+        introduction: {
+          serviceOrderNumber: planning.introduction.serviceOrderNumber,
+          operationType: planning.introduction.operationType,
+          description: planning.introduction.description,
+          supportUnit: planning.introduction.supportUnit,
+          mandateType: planning.introduction.mandateType,
+          operationDate: planning.introduction.operationDate,
+          operationTime: planning.introduction.operationTime,
         },
         targets: planning.targets || [],
-        addresses: planning.addresses || [],
+        assignments: planning.assignments || [],
         images: planning.images || [],
-        functionsBoard: planning.functionsBoard || [],
+
         schedule: planning.schedule || [],
-        communications: planning.communications || {
-          vehicleCall: "",
-          operatorCall: "",
-          frequency: "",
+        communications: {
+          vehicleCall: planning.communications.vehicleCall,
+          operatorCall: planning.communications.operatorCall,
+          frequency: planning.communications.frequency,
         },
-        peculiarities: planning.peculiarities || {
-          searchObjects: [],
-          observations: "",
-          risks: "",
+        peculiarities: {
+          searchObjects: planning.peculiarities.searchObjects || [],
+          observations: planning.peculiarities.observations,
+          risks: planning.peculiarities.risks,
         },
-        aph: planning.aph || {
-          medics: [],
-          equipment: [],
-          procedures: "",
-          hospital: "",
-          hospitalPhone: "",
+        medical: {
+          medic: planning.medical.medic,
+          medicId: planning.medical.medicId,
+          vehicleForTransport: planning.medical.vehicleForTransport,
+          hospitalContact: planning.medical.hospitalContact,
+          procedures: planning.medical.procedures || "",
         },
         complementaryMeasures: planning.complementaryMeasures || [],
         routes: planning.routes || [],
         locations: planning.locations || [],
+        status: planning.status || "draft",
+        priority: planning.priority || "medium",
+        createdBy: planning.createdBy || "",
+        responsibleId: planning.responsibleId || "",
+        responsibleName: planning.responsibleName || "",
+        createdAt: planning.createdAt || new Date(),
+        updatedAt: planning.updatedAt || new Date(),
       })
     } else {
       setFormData({
-        title: "",
-        description: "",
-        startDate: "",
-        endDate: "",
-        status: "draft",
-        priority: "medium",
-        responsibleId: "",
-        objectives: [],
-        resources: [],
-        budget: undefined,
+
         introduction: {
           serviceOrderNumber: "",
           operationType: "",
@@ -169,9 +207,9 @@ export function OperationalPlanningFormModal({
           operationTime: "",
         },
         targets: [],
-        addresses: [],
         images: [],
-        functionsBoard: [],
+        id: "",
+        assignments: [],
         schedule: [],
         communications: {
           vehicleCall: "",
@@ -183,122 +221,151 @@ export function OperationalPlanningFormModal({
           observations: "",
           risks: "",
         },
-        aph: {
-          medics: [],
-          equipment: [],
+        medical: {
+          medic: "",
+          medicId: "",
+          vehicleForTransport: "",
+          hospitalContact: "",
           procedures: "",
-          hospital: "",
-          hospitalPhone: "",
         },
         complementaryMeasures: [],
         routes: [],
         locations: [],
+        status: "draft",
+        priority: "medium",
+        createdBy: "",
+        responsibleId: "",
+        responsibleName: "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
     }
-    // Reset dos estados de novos itens
-    setNewObjective("")
-    setNewResource("")
-    setNewTarget({ name: "", description: "" })
-    setNewAddress({ location: "", coordinates: "", reference: "" })
-    setNewScheduleItem({ time: "", activity: "" })
-    setNewSearchObject("")
-    setNewMedic("")
-    setNewEquipment("")
+    setNewTarget(blankTarget())
+    setNewRoute(blankRoute())
+    setNewLocation(blankLocation())
+    setNewAssignment(blankAssignment())
+    setNewScheduleItem(blankSchedule())
     setNewMeasure("")
-    setNewRoute({ from: "", to: "", distance: "", time: "" })
-    setNewLocation({ name: "", coordinates: "", reference: "" })
-  }, [planning, isOpen])
+    setNewSearchObject("")
+    // eslint-disable-next-line
+  }, [planning])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit(formData)
-  }
-
-  const addObjective = () => {
-    if (newObjective.trim()) {
-      setFormData({
-        ...formData,
-        objectives: [...formData.objectives, newObjective.trim()],
-      })
-      setNewObjective("")
-    }
-  }
-
-  const removeObjective = (index: number) => {
-    setFormData({
-      ...formData,
-      objectives: formData.objectives.filter((_, i) => i !== index),
-    })
-  }
-
-  const addResource = () => {
-    if (newResource.trim()) {
-      setFormData({
-        ...formData,
-        resources: [...formData.resources, newResource.trim()],
-      })
-      setNewResource("")
-    }
-  }
-
-  const removeResource = (index: number) => {
-    setFormData({
-      ...formData,
-      resources: formData.resources.filter((_, i) => i !== index),
-    })
-  }
-
+  // --- Handlers ---
+  // Targets
   const addTarget = () => {
-    if (newTarget.name.trim()) {
+    if (newTarget.name.trim() && newTarget.address.trim()) {
       setFormData({
         ...formData,
         targets: [...formData.targets, { ...newTarget, id: Date.now().toString() }],
       })
-      setNewTarget({ name: "", description: "" })
+      setNewTarget(blankTarget())
     }
   }
-
-  const removeTarget = (index: number) => {
+  const removeTarget = (id: string) => {
     setFormData({
       ...formData,
-      targets: formData.targets.filter((_, i) => i !== index),
+      targets: formData.targets.filter((t) => t.id !== id),
     })
   }
 
-  const addAddress = () => {
-    if (newAddress.location.trim()) {
+  // Assignments
+  const addAssignment = () => {
+    if (newAssignment.operatorId && newAssignment.functionId) {
       setFormData({
         ...formData,
-        addresses: [...formData.addresses, { ...newAddress, id: Date.now().toString() }],
+        assignments: [
+          ...formData.assignments,
+          { ...newAssignment, id: Date.now().toString(), order: formData.assignments.length + 1 },
+        ],
       })
-      setNewAddress({ location: "", coordinates: "", reference: "" })
+      setNewAssignment(blankAssignment())
     }
   }
-
-  const removeAddress = (index: number) => {
+  const removeAssignment = (id: string) => {
     setFormData({
       ...formData,
-      addresses: formData.addresses.filter((_, i) => i !== index),
+      assignments: formData.assignments.filter((a) => a.id !== id),
     })
   }
 
-  const addScheduleItem = () => {
+  const updateFunctionAssignment = (index: number, field: string, value: string) => {
+    const updated = [...formData.assignments]
+    updated[index] = { ...updated[index], [field]: value }
+    setFormData({
+      ...formData,
+      assignments: updated,
+    })
+  }
+
+  // Routes
+  const addRoute = () => {
+    if (newRoute.origin.trim() && newRoute.destination.trim()) {
+      setFormData({
+        ...formData,
+        routes: [...formData.routes, { ...newRoute, id: Date.now().toString() }],
+      })
+      setNewRoute(blankRoute())
+    }
+  }
+  const removeRoute = (id: string) => {
+    setFormData({
+      ...formData,
+      routes: formData.routes.filter((r) => r.id !== id),
+    })
+  }
+
+  // Locations
+  const addLocation = () => {
+    if (newLocation.name.trim() && newLocation.address.trim() && newLocation.type) {
+      setFormData({
+        ...formData,
+        locations: [...formData.locations, { ...newLocation, id: Date.now().toString() }],
+      })
+      setNewLocation(blankLocation())
+    }
+  }
+  const removeLocation = (id: string) => {
+    setFormData({
+      ...formData,
+      locations: formData.locations.filter((l) => l.id !== id),
+    })
+  }
+
+  // Schedule
+  const addSchedule = () => {
     if (newScheduleItem.time.trim() && newScheduleItem.activity.trim()) {
       setFormData({
         ...formData,
         schedule: [...formData.schedule, { ...newScheduleItem, id: Date.now().toString() }],
       })
-      setNewScheduleItem({ time: "", activity: "" })
+      setNewScheduleItem(blankSchedule())
     }
   }
-
-  const removeScheduleItem = (index: number) => {
+  const removeSchedule = (id: string) => {
     setFormData({
       ...formData,
-      schedule: formData.schedule.filter((_, i) => i !== index),
+      schedule: formData.schedule.filter((s) => s.id !== id),
     })
   }
 
+  // Complementary Measures
+  const addMeasure = () => {
+    if (newMeasure.trim()) {
+      setFormData({
+        ...formData,
+        complementaryMeasures: [...formData.complementaryMeasures, newMeasure.trim()],
+      })
+      setNewMeasure("")
+    }
+  }
+  const removeMeasure = (index: number) => {
+    setFormData({
+      ...formData,
+      complementaryMeasures: formData.complementaryMeasures.filter((_, i) => i !== index),
+    })
+  }
+
+  // Search Objects
   const addSearchObject = () => {
     if (newSearchObject.trim()) {
       setFormData({
@@ -311,7 +378,6 @@ export function OperationalPlanningFormModal({
       setNewSearchObject("")
     }
   }
-
   const removeSearchObject = (index: number) => {
     setFormData({
       ...formData,
@@ -322,137 +388,26 @@ export function OperationalPlanningFormModal({
     })
   }
 
-  const addMedic = () => {
-    if (newMedic.trim()) {
-      setFormData({
-        ...formData,
-        aph: {
-          ...formData.aph,
-          medics: [...formData.aph.medics, newMedic.trim()],
-        },
-      })
-      setNewMedic("")
-    }
-  }
-
-  const removeMedic = (index: number) => {
+  // Medical
+  const handleMedicalChange = (field: keyof OperationalPlanning["medical"], value: string) => {
     setFormData({
       ...formData,
-      aph: {
-        ...formData.aph,
-        medics: formData.aph.medics.filter((_, i) => i !== index),
+      medical: {
+        ...formData.medical,
+        [field]: value,
       },
     })
   }
 
-  const addEquipment = () => {
-    if (newEquipment.trim()) {
-      setFormData({
-        ...formData,
-        aph: {
-          ...formData.aph,
-          equipment: [...formData.aph.equipment, newEquipment.trim()],
-        },
-      })
-      setNewEquipment("")
-    }
-  }
-
-  const removeEquipment = (index: number) => {
-    setFormData({
-      ...formData,
-      aph: {
-        ...formData.aph,
-        equipment: formData.aph.equipment.filter((_, i) => i !== index),
-      },
-    })
-  }
-
-  const addMeasure = () => {
-    if (newMeasure.trim()) {
-      setFormData({
-        ...formData,
-        complementaryMeasures: [...formData.complementaryMeasures, newMeasure.trim()],
-      })
-      setNewMeasure("")
-    }
-  }
-
-  const removeMeasure = (index: number) => {
-    setFormData({
-      ...formData,
-      complementaryMeasures: formData.complementaryMeasures.filter((_, i) => i !== index),
-    })
-  }
-
-  const addRoute = () => {
-    if (newRoute.from.trim() && newRoute.to.trim()) {
-      setFormData({
-        ...formData,
-        routes: [...formData.routes, { ...newRoute, id: Date.now().toString() }],
-      })
-      setNewRoute({ from: "", to: "", distance: "", time: "" })
-    }
-  }
-
-  const removeRoute = (index: number) => {
-    setFormData({
-      ...formData,
-      routes: formData.routes.filter((_, i) => i !== index),
-    })
-  }
-
-  const addLocation = () => {
-    if (newLocation.name.trim()) {
-      setFormData({
-        ...formData,
-        locations: [...formData.locations, { ...newLocation, id: Date.now().toString() }],
-      })
-      setNewLocation({ name: "", coordinates: "", reference: "" })
-    }
-  }
-
-  const removeLocation = (index: number) => {
-    setFormData({
-      ...formData,
-      locations: formData.locations.filter((_, i) => i !== index),
-    })
-  }
-
-  const addFunctionAssignment = () => {
-    setFormData({
-      ...formData,
-      functionsBoard: [
-        ...formData.functionsBoard,
-        {
-          id: Date.now().toString(),
-          operatorId: "",
-          functionId: "",
-          vehicleId: "",
-          order: formData.functionsBoard.length + 1,
-        },
-      ],
-    })
-  }
-
-  const removeFunctionAssignment = (index: number) => {
-    setFormData({
-      ...formData,
-      functionsBoard: formData.functionsBoard.filter((_, i) => i !== index),
-    })
-  }
-
-  const updateFunctionAssignment = (index: number, field: string, value: string) => {
-    const updated = [...formData.functionsBoard]
-    updated[index] = { ...updated[index], [field]: value }
-    setFormData({
-      ...formData,
-      functionsBoard: updated,
-    })
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit(formData)
   }
 
   const isEditing = !!planning
 
+
+  // --- UI ---
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
@@ -608,12 +563,12 @@ export function OperationalPlanningFormModal({
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       {formData.targets.map((target, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                        <div key={target.id} className="flex items-center gap-2 p-3 border rounded">
                           <div className="flex-1">
                             <div className="font-medium">{target.name}</div>
                             <div className="text-sm text-muted-foreground">{target.description}</div>
                           </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeTarget(index)}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeTarget(target.id)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -645,42 +600,42 @@ export function OperationalPlanningFormModal({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      {formData.addresses.map((address, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                      {formData.targets.map((target, index) => (
+                        <div key={target.id} className="flex items-center gap-2 p-3 border rounded">
                           <div className="flex-1">
-                            <div className="font-medium">{address.location}</div>
+                            <div className="font-medium">{target.address}</div>
                             <div className="text-sm text-muted-foreground">
-                              {address.coordinates && `Coordenadas: ${address.coordinates}`}
+                              {target.coordinates && `Coordenadas: ${target.coordinates}`}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {address.reference && `Referência: ${address.reference}`}
+                              {target.observations && `Referência: ${target.observations}`}
                             </div>
                           </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeAddress(index)}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeTarget(target.id)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                       <div className="grid gap-2">
                         <Input
-                          value={newAddress.location}
-                          onChange={(e) => setNewAddress({ ...newAddress, location: e.target.value })}
+                          value={newTarget.address}
+                          onChange={(e) => setNewTarget({ ...newTarget, address: e.target.value })}
                           placeholder="Endereço completo"
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <Input
-                            value={newAddress.coordinates}
-                            onChange={(e) => setNewAddress({ ...newAddress, coordinates: e.target.value })}
+                            value={newTarget.coordinates}
+                            onChange={(e) => setNewTarget({ ...newTarget, coordinates: e.target.value })}
                             placeholder="Coordenadas GPS"
                           />
                           <Input
-                            value={newAddress.reference}
-                            onChange={(e) => setNewAddress({ ...newAddress, reference: e.target.value })}
+                            value={newTarget.observations}
+                            onChange={(e) => setNewTarget({ ...newTarget, observations: e.target.value })}
                             placeholder="Ponto de referência"
                           />
                         </div>
                       </div>
-                      <Button type="button" variant="outline" onClick={addAddress} className="w-full bg-transparent">
+                      <Button type="button" variant="outline" onClick={addTarget} className="w-full bg-transparent">
                         <Plus className="h-4 w-4 mr-2" />
                         Adicionar Endereço
                       </Button>
@@ -714,8 +669,8 @@ export function OperationalPlanningFormModal({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      {formData.functionsBoard.map((assignment, index) => (
-                        <div key={index} className="grid grid-cols-4 gap-2 p-3 border rounded">
+                      {formData.assignments.map((assignment, index) => (
+                        <div key={assignment.id} className="grid grid-cols-4 gap-2 p-3 border rounded">
                           <Select
                             value={assignment.operatorId}
                             onValueChange={(value) => updateFunctionAssignment(index, "operatorId", value)}
@@ -768,7 +723,7 @@ export function OperationalPlanningFormModal({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeFunctionAssignment(index)}
+                            onClick={() => removeAssignment(assignment.id)}
                           >
                             <X className="h-4 w-4" />
                           </Button>
@@ -777,7 +732,7 @@ export function OperationalPlanningFormModal({
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={addFunctionAssignment}
+                        onClick={addAssignment}
                         className="w-full bg-transparent"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -798,10 +753,10 @@ export function OperationalPlanningFormModal({
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       {formData.schedule.map((item, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                        <div key={item.id} className="flex items-center gap-2 p-3 border rounded">
                           <div className="font-mono text-sm font-medium min-w-[80px]">{item.time}</div>
                           <div className="flex-1">{item.activity}</div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeScheduleItem(index)}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeSchedule(item.id)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -823,7 +778,7 @@ export function OperationalPlanningFormModal({
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={addScheduleItem}
+                        onClick={addSchedule}
                         className="w-full bg-transparent"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -896,7 +851,7 @@ export function OperationalPlanningFormModal({
                       <Label>Objetos da Busca</Label>
                       <div className="space-y-2">
                         {formData.peculiarities.searchObjects.map((object, index) => (
-                          <div key={index} className="flex items-center gap-2">
+                          <div key={object} className="flex items-center gap-2">
                             <Badge variant="outline" className="flex-1 justify-start">
                               {object}
                             </Badge>
@@ -960,7 +915,7 @@ export function OperationalPlanningFormModal({
                     <div className="grid gap-2">
                       <Label>Socorristas</Label>
                       <div className="space-y-2">
-                        {formData.aph.medics.map((medic, index) => (
+                        {/* {formData.aph.medics.map((medic, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Badge variant="outline" className="flex-1 justify-start">
                               {medic}
@@ -980,14 +935,14 @@ export function OperationalPlanningFormModal({
                           <Button type="button" variant="outline" onClick={addMedic}>
                             <Plus className="h-4 w-4" />
                           </Button>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
 
                     <div className="grid gap-2">
                       <Label>Equipamentos</Label>
                       <div className="space-y-2">
-                        {formData.aph.equipment.map((equipment, index) => (
+                        {/* {formData.aph.equipment.map((equipment, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Badge variant="outline" className="flex-1 justify-start">
                               {equipment}
@@ -1007,18 +962,18 @@ export function OperationalPlanningFormModal({
                           <Button type="button" variant="outline" onClick={addEquipment}>
                             <Plus className="h-4 w-4" />
                           </Button>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
 
                     <div className="grid gap-2">
                       <Label>Procedimentos</Label>
                       <Textarea
-                        value={formData.aph.procedures}
+                        value={formData.medical.procedures}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            aph: { ...formData.aph, procedures: e.target.value },
+                            medical: { ...formData.medical, procedures: e.target.value },
                           })
                         }
                         placeholder="Procedimentos de atendimento"
@@ -1030,11 +985,13 @@ export function OperationalPlanningFormModal({
                       <div className="grid gap-2">
                         <Label>Hospital de Referência</Label>
                         <Input
-                          value={formData.aph.hospital}
+                          value={formData.locations.find((l) => l.type === "hospital")?.name || ""}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              aph: { ...formData.aph, hospital: e.target.value },
+                              locations: formData.locations.map((l) =>
+                                l.type === "hospital" ? { ...l, name: e.target.value } : l
+                              ),
                             })
                           }
                           placeholder="Nome do hospital"
@@ -1043,11 +1000,11 @@ export function OperationalPlanningFormModal({
                       <div className="grid gap-2">
                         <Label>Telefone do Hospital</Label>
                         <Input
-                          value={formData.aph.hospitalPhone}
+                          value={formData.medical.hospitalContact}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              aph: { ...formData.aph, hospitalPhone: e.target.value },
+                              medical: { ...formData.medical, hospitalContact: e.target.value },
                             })
                           }
                           placeholder="(61) 3550-8900"
@@ -1065,7 +1022,7 @@ export function OperationalPlanningFormModal({
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       {formData.complementaryMeasures.map((measure, index) => (
-                        <div key={index} className="flex items-center gap-2">
+                        <div key={measure} className="flex items-center gap-2">
                           <Badge variant="outline" className="flex-1 justify-start">
                             {measure}
                           </Badge>
@@ -1097,30 +1054,30 @@ export function OperationalPlanningFormModal({
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       {formData.routes.map((route, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                        <div key={route.id} className="flex items-center gap-2 p-3 border rounded">
                           <div className="flex-1">
                             <div className="font-medium">
-                              {route.from} → {route.to}
+                              {route.origin} → {route.destination}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {route.distance && `Distância: ${route.distance}`}
-                              {route.time && ` • Tempo: ${route.time}`}
+                              {route.duration && ` • Tempo: ${route.duration}`}
                             </div>
                           </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeRoute(index)}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeRoute(route.id)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                       <div className="grid grid-cols-2 gap-2">
                         <Input
-                          value={newRoute.from}
-                          onChange={(e) => setNewRoute({ ...newRoute, from: e.target.value })}
+                          value={newRoute.origin}
+                          onChange={(e) => setNewRoute({ ...newRoute, origin: e.target.value })}
                           placeholder="Origem"
                         />
                         <Input
-                          value={newRoute.to}
-                          onChange={(e) => setNewRoute({ ...newRoute, to: e.target.value })}
+                          value={newRoute.destination}
+                          onChange={(e) => setNewRoute({ ...newRoute, destination: e.target.value })}
                           placeholder="Destino"
                         />
                         <Input
@@ -1129,8 +1086,8 @@ export function OperationalPlanningFormModal({
                           placeholder="Distância"
                         />
                         <Input
-                          value={newRoute.time}
-                          onChange={(e) => setNewRoute({ ...newRoute, time: e.target.value })}
+                          value={newRoute.duration}
+                          onChange={(e) => setNewRoute({ ...newRoute, duration: e.target.value })}
                           placeholder="Tempo estimado"
                         />
                       </div>
@@ -1149,18 +1106,18 @@ export function OperationalPlanningFormModal({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      {formData.locations.map((location, index) => (
-                        <div key={index} className="flex items-center gap-2 p-3 border rounded">
+                      {formData.locations.map((location) => (
+                        <div key={location.id} className="flex items-center gap-2 p-3 border rounded">
                           <div className="flex-1">
                             <div className="font-medium">{location.name}</div>
                             <div className="text-sm text-muted-foreground">
                               {location.coordinates && `Coordenadas: ${location.coordinates}`}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {location.reference && `Referência: ${location.reference}`}
+                              {location.address && `Referência: ${location.address}`}
                             </div>
                           </div>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeLocation(index)}>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => removeLocation(location.id)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1178,8 +1135,8 @@ export function OperationalPlanningFormModal({
                             placeholder="Coordenadas GPS"
                           />
                           <Input
-                            value={newLocation.reference}
-                            onChange={(e) => setNewLocation({ ...newLocation, reference: e.target.value })}
+                            value={newLocation.address}
+                            onChange={(e) => setNewLocation({ ...newLocation, address: e.target.value })}
                             placeholder="Ponto de referência"
                           />
                         </div>

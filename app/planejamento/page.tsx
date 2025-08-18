@@ -4,27 +4,28 @@ import { useState, useEffect } from "react"
 import { RouteGuard } from "@/components/auth/route-guard"
 import { PermissionGuard } from "@/components/auth/permission-guard"
 import { usePermissions } from "@/hooks/use-permissions"
-import type { Planning } from "@/types/planning"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PlanningTable } from "@/components/planning/planning-table"
 import { OperationalPlanningFormModal } from "@/components/planning/operational-planning-form-modal"
-import { PlanningDetailModal } from "@/components/planning/planning-detail-modal"
-import { getAllPlannings, createPlanning, updatePlanning, deletePlanning } from "@/lib/planning-management"
+import { createPlanning, updatePlanning, deletePlanning } from "@/lib/planning-management"
 import { Plus, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import type { OperationalPlanning } from "@/types/operational-planning"
+import { getAllOperationalPlannings } from "@/lib/operational-planning-management"
+import { OperationalPlanningDetailModal } from "@/components/planning/operational-planning-detail-modal"
 
 export default function PlanningPage() {
   const { user, hasPermission, logAccess } = usePermissions()
   const router = useRouter()
   const { toast } = useToast()
-  const [plannings, setPlannings] = useState<Planning[]>([])
+  const [plannings, setPlannings] = useState<OperationalPlanning[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  const [editingPlanning, setEditingPlanning] = useState<Planning | null>(null)
-  const [viewingPlanning, setViewingPlanning] = useState<Planning | null>(null)
+  const [editingPlanning, setEditingPlanning] = useState<OperationalPlanning | null>(null)
+  const [viewingPlanning, setViewingPlanning] = useState<OperationalPlanning | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const canEdit = hasPermission("planning.edit")
@@ -32,15 +33,11 @@ export default function PlanningPage() {
   const canDelete = hasPermission("planning.delete")
 
   // Load plannings
-  useEffect(() => {
-    loadPlannings()
-  }, [])
-
-  const loadPlannings = async () => {
+  async function loadPlannings() {
     try {
       setIsLoading(true)
       logAccess("LOAD_PLANNINGS", "/planejamento", true)
-      const planningsData = await getAllPlannings()
+      const planningsData = await getAllOperationalPlannings()
       setPlannings(planningsData)
     } catch (error) {
       logAccess("LOAD_PLANNINGS", "/planejamento", false, "Failed to load plannings")
@@ -54,6 +51,12 @@ export default function PlanningPage() {
     }
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useEffect(() => {
+    loadPlannings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleCreatePlanning = () => {
     if (!canCreate) return
     logAccess("OPEN_CREATE_PLANNING_FORM", "/planejamento", true)
@@ -61,14 +64,14 @@ export default function PlanningPage() {
     setIsFormModalOpen(true)
   }
 
-  const handleEditPlanning = (planning: Planning) => {
+  const handleEditPlanning = (planning: OperationalPlanning) => {
     if (!canEdit) return
     logAccess("OPEN_EDIT_PLANNING_FORM", `/planejamento/${planning.id}`, true)
     setEditingPlanning(planning)
     setIsFormModalOpen(true)
   }
 
-  const handleViewPlanning = (planning: Planning) => {
+  const handleViewPlanning = (planning: OperationalPlanning) => {
     logAccess("VIEW_PLANNING", `/planejamento/${planning.id}`, true)
     setViewingPlanning(planning)
     setIsDetailModalOpen(true)
@@ -202,7 +205,7 @@ export default function PlanningPage() {
             isLoading={isSubmitting}
           />
 
-          <PlanningDetailModal
+          <OperationalPlanningDetailModal
             isOpen={isDetailModalOpen}
             onClose={() => setIsDetailModalOpen(false)}
             planning={viewingPlanning}
