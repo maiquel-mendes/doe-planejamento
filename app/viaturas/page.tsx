@@ -3,7 +3,7 @@
 import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useId } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import {
@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -70,28 +71,24 @@ export default function VehiclesPage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    prefix: "",
-    type: "viatura" as "viatura" | "moto" | "van" | "blindado",
-    model: "",
-    capacity: 4,
-    isActive: true,
-  });
+  const [formData, setFormData] = useState<Omit<Vehicle, "id" | "createdAt" | "updatedAt"> & { id?: string }>(() => ({
+    prefix: editingVehicle?.prefix || "",
+    type: editingVehicle?.type || "viatura",
+    model: editingVehicle?.model || "",
+    capacity: editingVehicle?.capacity || 4,
+    isActive: editingVehicle?.isActive ?? true,
+  }));
 
   const canEdit = hasPermission("user.manage"); // Apenas admins podem gerenciar viaturas
   const canCreate = hasPermission("user.manage");
   const canDelete = hasPermission("user.manage");
 
-  useEffect(() => {
-    loadVehicles();
-  }, []);
-
-  const loadVehicles = async () => {
+  const loadVehicles = useCallback(async () => {
     try {
       setIsLoading(true);
       logAccess("LOAD_VEHICLES", "/viaturas", true);
       const vehiclesData = await getAllVehicles();
-      setVehicles(vehiclesData);
+      setVehicles(vehiclesData.map((v: any) => ({ ...v, createdAt: new Date(v.createdAt), updatedAt: new Date(v.updatedAt) })));
     } catch (error) {
       logAccess("LOAD_VEHICLES", "/viaturas", false, "Failed to load vehicles");
       toast({
@@ -102,19 +99,16 @@ export default function VehiclesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logAccess, toast]);
+
+  useEffect(() => {
+    loadVehicles();
+  }, [loadVehicles]);
 
   const handleCreateVehicle = () => {
     if (!canCreate) return;
     logAccess("OPEN_CREATE_VEHICLE_FORM", "/viaturas", true);
     setEditingVehicle(null);
-    setFormData({
-      prefix: "",
-      type: "viatura",
-      model: "",
-      capacity: 4,
-      isActive: true,
-    });
     setIsFormModalOpen(true);
   };
 
@@ -122,13 +116,6 @@ export default function VehiclesPage() {
     if (!canEdit) return;
     logAccess("OPEN_EDIT_VEHICLE_FORM", `/viaturas/${vehicle.id}`, true);
     setEditingVehicle(vehicle);
-    setFormData({
-      prefix: vehicle.prefix,
-      type: vehicle.type,
-      model: vehicle.model,
-      capacity: vehicle.capacity,
-      isActive: vehicle.isActive,
-    });
     setIsFormModalOpen(true);
   };
 
@@ -253,6 +240,12 @@ export default function VehiclesPage() {
         return "outline";
     }
   };
+
+  const prefixId = useId();
+  const typeId = useId();
+  const modelId = useId();
+  const capacityId = useId();
+  const isActiveId = useId();
 
   return (
     <RouteGuard requiredPermissions={["user.manage"]}>
@@ -405,9 +398,9 @@ export default function VehiclesPage() {
               <form onSubmit={handleSubmitVehicle}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="prefix">Prefixo</Label>
+                    <Label htmlFor={prefixId}>Prefixo</Label>
                     <Input
-                      id="prefix"
+                      id={prefixId}
                       value={formData.prefix}
                       onChange={(e) =>
                         setFormData({ ...formData, prefix: e.target.value })
@@ -418,7 +411,7 @@ export default function VehiclesPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="type">Tipo</Label>
+                    <Label htmlFor={typeId}>Tipo</Label>
                     <Select
                       value={formData.type}
                       onValueChange={(
@@ -438,9 +431,9 @@ export default function VehiclesPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="model">Modelo</Label>
+                    <Label htmlFor={modelId}>Modelo</Label>
                     <Input
-                      id="model"
+                      id={modelId}
                       value={formData.model}
                       onChange={(e) =>
                         setFormData({ ...formData, model: e.target.value })
@@ -451,9 +444,9 @@ export default function VehiclesPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="capacity">Capacidade</Label>
+                    <Label htmlFor={capacityId}>Capacidade</Label>
                     <Input
-                      id="capacity"
+                      id={capacityId}
                       type="number"
                       value={formData.capacity}
                       onChange={(e) =>
@@ -470,16 +463,14 @@ export default function VehiclesPage() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isActive"
+                    <Switch
+                      id={isActiveId}
                       checked={formData.isActive}
-                      onChange={(e) =>
-                        setFormData({ ...formData, isActive: e.target.checked })
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isActive: checked })
                       }
-                      className="rounded border-gray-300"
                     />
-                    <Label htmlFor="isActive">Viatura ativa</Label>
+                    <Label htmlFor={isActiveId}>Viatura ativa</Label>
                   </div>
                 </div>
                 <DialogFooter>

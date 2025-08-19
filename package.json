@@ -11,6 +11,7 @@
     "format:write": "biome format --write .",
     "check": "biome check --write ."
   },
+  "postinstall": "npx prisma db push --skip-generate && npx ts-node prisma/seed.ts",
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@prisma/client": "^6.14.0",
@@ -75,6 +76,7 @@
     "postcss": "^8.5",
     "prisma": "^6.14.0",
     "tailwindcss": "^4.1.9",
+    "tsconfig-paths": "^4.2.0",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }

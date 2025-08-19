@@ -101,21 +101,17 @@ export default function PlanningPage() {
 
       if (editingPlanning) {
         // Update existing planning
-        if (!canEdit) {
-          logAccess(
-            "UPDATE_PLANNING",
-            `/planejamento/${editingPlanning.id}`,
-            false,
-            "No edit permission",
-          );
+        if (!editingPlanning.id) {
+          toast({
+            title: "Erro",
+            description: "ID do planejamento inválido para atualização.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
           return;
         }
         await updateOperationalPlanning(editingPlanning.id, data);
-        logAccess(
-          "UPDATE_PLANNING",
-          `/planejamento/${editingPlanning.id}`,
-          true,
-        );
+        logAccess("UPDATE_PLANNING", `/planejamento/${editingPlanning.id}`, true);
         toast({
           title: "Sucesso",
           description: "Planejamento atualizado com sucesso",

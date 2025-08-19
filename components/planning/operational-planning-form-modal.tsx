@@ -30,17 +30,17 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { mockUsers } from "@/lib/auth-mock";
-import { mockFunctions } from "@/lib/operational-functions";
-import { mockVehicles } from "@/lib/vehicles";
 import type {
   Location,
   OperationalAssignment,
+  OperationalFunction,
   OperationalPlanning,
   Route,
   Target,
   TimeSchedule,
+  Vehicle,
 } from "@/types/operational-planning";
+import type { User } from "@/types/auth";
 
 interface OperationalPlanningFormModalProps {
   isOpen: boolean;
@@ -54,6 +54,7 @@ interface OperationalPlanningFormModalProps {
 const blankTarget = (): Target => ({
   id: "",
   name: "",
+  alias: "", // Initialize alias to empty string
   address: "",
 });
 const blankRoute = (): Route => ({
@@ -151,6 +152,36 @@ export function OperationalPlanningFormModal({
   );
   const [newMeasure, setNewMeasure] = useState("");
   const [newSearchObject, setNewSearchObject] = useState("");
+
+  // --- Data for Selects ---
+  const [users, setUsers] = useState<User[]>([]);
+  const [functions, setFunctions] = useState<OperationalFunction[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, functionsRes, vehiclesRes] = await Promise.all([
+          fetch("/api/users"),
+          fetch("/api/functions"),
+          fetch("/api/vehicles"),
+        ]);
+
+        const usersData = await usersRes.json();
+        const functionsData = await functionsRes.json();
+        const vehiclesData = await vehiclesRes.json();
+
+        setUsers(usersData.map((u: User) => ({ ...u, createdAt: new Date(u.createdAt) })));
+        setFunctions(functionsData.map((f: OperationalFunction) => ({ ...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt) })));
+        setVehicles(vehiclesData.map((v: Vehicle) => ({ ...v, createdAt: new Date(v.createdAt), updatedAt: new Date(v.updatedAt) })));
+      } catch (error) {
+        console.error("Failed to fetch select data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+
 
   // --- Effect: load planning ---
   useEffect(() => {
@@ -278,6 +309,10 @@ export function OperationalPlanningFormModal({
   // Assignments
   const addAssignment = () => {
     if (newAssignment.operatorId && newAssignment.functionId) {
+      const selectedOperator = users.find(u => u.id === newAssignment.operatorId);
+      const selectedFunction = functions.find(f => f.id === newAssignment.functionId);
+      const selectedVehicle = vehicles.find(v => v.id === newAssignment.vehicleId);
+
       setFormData({
         ...formData,
         assignments: [
@@ -286,6 +321,9 @@ export function OperationalPlanningFormModal({
             ...newAssignment,
             id: Date.now().toString(),
             order: formData.assignments.length + 1,
+            operatorName: selectedOperator?.name || "",
+            functionName: selectedFunction?.name || "",
+            vehiclePrefix: selectedVehicle?.prefix || "",
           },
         ],
       });
@@ -306,6 +344,19 @@ export function OperationalPlanningFormModal({
   ) => {
     const updated = [...formData.assignments];
     updated[index] = { ...updated[index], [field]: value };
+
+    // Update operatorName/functionName/vehiclePrefix when ID changes
+    if (field === "operatorId") {
+      const selectedOperator = users.find(u => u.id === value);
+      updated[index].operatorName = selectedOperator?.name || "";
+    } else if (field === "functionId") {
+      const selectedFunction = functions.find(f => f.id === value);
+      updated[index].functionName = selectedFunction?.name || "";
+    } else if (field === "vehicleId") {
+      const selectedVehicle = vehicles.find(v => v.id === value);
+      updated[index].vehiclePrefix = selectedVehicle?.prefix || "";
+    }
+
     setFormData({
       ...formData,
       assignments: updated,
@@ -630,23 +681,45 @@ export function OperationalPlanningFormModal({
               <TabsContent value="alvos" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>2. Identificação do Alvo</CardTitle>
+                    <CardTitle>2. Alvos da Operação</CardTitle>
                     <CardDescription>
-                      Informações sobre os alvos da operação
+                      Adicione e gerencie os alvos envolvidos na operação.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      {formData.targets.map((target, _index) => (
+                      {formData.targets.map((target) => (
                         <div
                           key={target.id}
                           className="flex items-center gap-2 p-3 border rounded"
                         >
                           <div className="flex-1">
                             <div className="font-medium">{target.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {target.description}
-                            </div>
+                            {target.alias && (
+                              <div className="text-sm text-muted-foreground">
+                                ({target.alias})
+                              </div>
+                            )}
+                            {target.address && (
+                              <div className="text-sm text-muted-foreground">
+                                {target.address}
+                              </div>
+                            )}
+                            {target.description && (
+                              <div className="text-sm text-muted-foreground">
+                                {target.description}
+                              </div>
+                            )}
+                            {target.observations && (
+                              <div className="text-sm text-muted-foreground">
+                                Obs: {target.observations}
+                              </div>
+                            )}
+                            {target.coordinates && (
+                              <div className="text-sm text-muted-foreground">
+                                Coord: {target.coordinates}
+                              </div>
+                            )}
                           </div>
                           <Button
                             type="button"
@@ -658,14 +731,54 @@ export function OperationalPlanningFormModal({
                           </Button>
                         </div>
                       ))}
-                      <div className="grid grid-cols-2 gap-2">
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Nome do Alvo</Label>
+                      <Input
+                        value={newTarget.name}
+                        onChange={(e) =>
+                          setNewTarget({ ...newTarget, name: e.target.value })
+                        }
+                        placeholder="Nome completo do alvo"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Apelido (opcional)</Label>
+                      <Input
+                        value={newTarget.alias}
+                        onChange={(e) =>
+                          setNewTarget({ ...newTarget, alias: e.target.value })
+                        }
+                        placeholder="Apelido ou nome conhecido"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Endereço</Label>
+                      <Input
+                        value={newTarget.address}
+                        onChange={(e) =>
+                          setNewTarget({ ...newTarget, address: e.target.value })
+                        }
+                        placeholder="Endereço completo do alvo"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid gap-2">
+                        <Label>Coordenadas GPS (opcional)</Label>
                         <Input
-                          value={newTarget.name}
+                          value={newTarget.coordinates}
                           onChange={(e) =>
-                            setNewTarget({ ...newTarget, name: e.target.value })
+                            setNewTarget({
+                              ...newTarget,
+                              coordinates: e.target.value,
+                            })
                           }
-                          placeholder="Nome do alvo"
+                          placeholder="Ex: -15.7801, -47.9292"
                         />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>Descrição / Observações (opcional)</Label>
                         <Input
                           value={newTarget.description}
                           onChange={(e) =>
@@ -674,105 +787,39 @@ export function OperationalPlanningFormModal({
                               description: e.target.value,
                             })
                           }
-                          placeholder="Descrição/Observações"
+                          placeholder="Detalhes adicionais sobre o alvo"
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addTarget}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Alvo
-                      </Button>
                     </div>
+                    <div className="grid gap-2">
+                      <Label>Observações Gerais (opcional)</Label>
+                      <Textarea
+                        value={newTarget.observations}
+                        onChange={(e) =>
+                          setNewTarget({
+                            ...newTarget,
+                            observations: e.target.value,
+                          })
+                        }
+                        placeholder="Observações gerais sobre o alvo"
+                        rows={2}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addTarget}
+                      className="w-full bg-transparent"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Alvo
+                    </Button>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>3. Endereço do Alvo</CardTitle>
-                    <CardDescription>Localizações dos alvos</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.targets.map((target, _index) => (
-                        <div
-                          key={target.id}
-                          className="flex items-center gap-2 p-3 border rounded"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">{target.address}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {target.coordinates &&
-                                `Coordenadas: ${target.coordinates}`}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {target.observations &&
-                                `Referência: ${target.observations}`}
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeTarget(target.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="grid gap-2">
-                        <Input
-                          value={newTarget.address}
-                          onChange={(e) =>
-                            setNewTarget({
-                              ...newTarget,
-                              address: e.target.value,
-                            })
-                          }
-                          placeholder="Endereço completo"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            value={newTarget.coordinates}
-                            onChange={(e) =>
-                              setNewTarget({
-                                ...newTarget,
-                                coordinates: e.target.value,
-                              })
-                            }
-                            placeholder="Coordenadas GPS"
-                          />
-                          <Input
-                            value={newTarget.observations}
-                            onChange={(e) =>
-                              setNewTarget({
-                                ...newTarget,
-                                observations: e.target.value,
-                              })
-                            }
-                            placeholder="Ponto de referência"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addTarget}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Endereço
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>4. Imagens</CardTitle>
+                    <CardTitle>3. Imagens</CardTitle>
                     <CardDescription>
                       Anexar imagens relevantes à operação
                     </CardDescription>
@@ -808,7 +855,7 @@ export function OperationalPlanningFormModal({
                           className="grid grid-cols-4 gap-2 p-3 border rounded"
                         >
                           <Select
-                            value={assignment.operatorId}
+                            value={assignment.operatorId || ""}
                             onValueChange={(value) =>
                               updateFunctionAssignment(
                                 index,
@@ -821,7 +868,7 @@ export function OperationalPlanningFormModal({
                               <SelectValue placeholder="Operador" />
                             </SelectTrigger>
                             <SelectContent>
-                              {mockUsers.map((user) => (
+                              {users.map((user: User) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   {user.name}
                                 </SelectItem>
@@ -830,7 +877,7 @@ export function OperationalPlanningFormModal({
                           </Select>
 
                           <Select
-                            value={assignment.functionId}
+                            value={assignment.functionId || ""}
                             onValueChange={(value) =>
                               updateFunctionAssignment(
                                 index,
@@ -843,7 +890,7 @@ export function OperationalPlanningFormModal({
                               <SelectValue placeholder="Função" />
                             </SelectTrigger>
                             <SelectContent>
-                              {mockFunctions.map((func) => (
+                              {functions.map((func: OperationalFunction) => (
                                 <SelectItem key={func.id} value={func.id}>
                                   {func.name}
                                 </SelectItem>
@@ -852,7 +899,7 @@ export function OperationalPlanningFormModal({
                           </Select>
 
                           <Select
-                            value={assignment.vehicleId}
+                            value={assignment.vehicleId || ""}
                             onValueChange={(value) =>
                               updateFunctionAssignment(
                                 index,
@@ -865,7 +912,7 @@ export function OperationalPlanningFormModal({
                               <SelectValue placeholder="Viatura" />
                             </SelectTrigger>
                             <SelectContent>
-                              {mockVehicles.map((vehicle) => (
+                              {vehicles.map((vehicle: Vehicle) => (
                                 <SelectItem key={vehicle.id} value={vehicle.id}>
                                   {vehicle.prefix} - {vehicle.model}
                                 </SelectItem>
@@ -883,15 +930,71 @@ export function OperationalPlanningFormModal({
                           </Button>
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addAssignment}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Função
-                      </Button>
+                      <div className="grid grid-cols-4 gap-2 p-3 border rounded">
+                        <Select
+                          value={newAssignment.operatorId}
+                          onValueChange={(value) =>
+                            setNewAssignment({ ...newAssignment, operatorId: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Operador" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {users.map((user: User) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select
+                          value={newAssignment.functionId}
+                          onValueChange={(value) =>
+                            setNewAssignment({ ...newAssignment, functionId: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Função" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {functions.map((func: OperationalFunction) => (
+                              <SelectItem key={func.id} value={func.id}>
+                                {func.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select
+                          value={newAssignment.vehicleId || ""}
+                          onValueChange={(value) =>
+                            setNewAssignment({ ...newAssignment, vehicleId: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Viatura" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vehicles.map((vehicle: Vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.id}>
+                                {vehicle.prefix} - {vehicle.model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={addAssignment}
+                          className="col-span-4"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar Função
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

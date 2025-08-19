@@ -39,38 +39,20 @@ export function UserFormModal({
   user,
   isLoading,
 }: UserFormModalProps) {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "", // Add password field
-    role: "user" as UserRole,
-    isActive: true,
-  });
+  const [formData, setFormData] = useState(() => ({
+    name: user?.name || "",
+    email: user?.email || "",
+    password: "", // Password should never be pre-filled for security
+    role: user?.role || "user",
+    isActive: user?.isActive ?? true,
+  }));
 
   const nameId = useId();
   const emailId = useId();
   const passwordId = useId();
   const isActiveId = useId();
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-        password: "", // Password should not be pre-filled for security
-      });
-    } else {
-      setFormData({
-        name: "",
-        email: "",
-        password: "",
-        role: "user",
-        isActive: true,
-      });
-    }
-  }, [user]); // Removed isOpen from dependencies
+  // Removed the useEffect that initializes formData based on user
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

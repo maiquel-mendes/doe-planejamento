@@ -3,7 +3,7 @@
 import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useId } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import {
@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -72,27 +73,23 @@ export default function FunctionsPage() {
   const [editingFunction, setEditingFunction] =
     useState<OperationalFunction | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    category: "apoio" as "entrada" | "apoio" | "comando" | "especializada",
-    isActive: true,
-  });
+  const [formData, setFormData] = useState<Omit<OperationalFunction, "id" | "createdAt" | "updatedAt"> & { id?: string }>(() => ({
+    name: editingFunction?.name || "",
+    description: editingFunction?.description || "",
+    category: editingFunction?.category || "apoio",
+    isActive: editingFunction?.isActive ?? true,
+  }));
 
   const canEdit = hasPermission("user.manage"); // Apenas admins podem gerenciar funções
   const canCreate = hasPermission("user.manage");
   const canDelete = hasPermission("user.manage");
 
-  useEffect(() => {
-    loadFunctions();
-  }, []);
-
-  const loadFunctions = async () => {
+  const loadFunctions = useCallback(async () => {
     try {
       setIsLoading(true);
       logAccess("LOAD_FUNCTIONS", "/funcoes", true);
       const functionsData = await getAllFunctions();
-      setFunctions(functionsData);
+      setFunctions(functionsData.map((f: any) => ({ ...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt) })));
     } catch (error) {
       logAccess(
         "LOAD_FUNCTIONS",
@@ -108,7 +105,11 @@ export default function FunctionsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [logAccess, toast]);
+
+  useEffect(() => {
+    loadFunctions();
+  }, [loadFunctions]);
 
   const handleCreateFunction = () => {
     if (!canCreate) return;
@@ -257,6 +258,11 @@ export default function FunctionsPage() {
         return "outline";
     }
   };
+
+  const nameId = useId();
+  const descriptionId = useId();
+  const categoryId = useId();
+  const isActiveId = useId();
 
   return (
     <RouteGuard requiredPermissions={["user.manage"]}>
@@ -409,9 +415,9 @@ export default function FunctionsPage() {
               <form onSubmit={handleSubmitFunction}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Nome</Label>
+                    <Label htmlFor={nameId}>Nome</Label>
                     <Input
-                      id="name"
+                      id={nameId}
                       value={formData.name}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
@@ -422,9 +428,9 @@ export default function FunctionsPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="description">Descrição</Label>
+                    <Label htmlFor={descriptionId}>Descrição</Label>
                     <Textarea
-                      id="description"
+                      id={descriptionId}
                       value={formData.description}
                       onChange={(e) =>
                         setFormData({
@@ -439,7 +445,7 @@ export default function FunctionsPage() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="category">Categoria</Label>
+                    <Label htmlFor={categoryId}>Categoria</Label>
                     <Select
                       value={formData.category}
                       onValueChange={(
@@ -465,16 +471,14 @@ export default function FunctionsPage() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isActive"
+                    <Switch
+                      id={isActiveId}
                       checked={formData.isActive}
-                      onChange={(e) =>
-                        setFormData({ ...formData, isActive: e.target.checked })
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isActive: checked })
                       }
-                      className="rounded border-gray-300"
                     />
-                    <Label htmlFor="isActive">Função ativa</Label>
+                    <Label htmlFor={isActiveId}>Função ativa</Label>
                   </div>
                 </div>
                 <DialogFooter>
@@ -501,3 +505,4 @@ export default function FunctionsPage() {
     </RouteGuard>
   );
 }
+
