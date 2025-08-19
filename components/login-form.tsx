@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login, isLoading } = useAuth();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +32,9 @@ export function LoginForm() {
     }
 
     const success = await login(email, password);
-    if (!success) {
+    if (success) {
+      router.push("/");
+    } else {
       setError("Credenciais inválidas");
     }
   };

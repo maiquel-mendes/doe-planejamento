@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from '@/contexts/auth-context';
 import {
   getUserPermissions,
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
   logAccess,
-} from "@/lib/permissions";
-import type { Permission } from "@/types/permissions";
-import { useCallback } from "react";
+} from '@/lib/permissions';
+import type { Permission } from '@/types/permissions';
+import { useCallback } from 'react';
 
 export function usePermissions() {
   const { user } = useAuth();

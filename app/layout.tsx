@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import type React from "react";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ProtectedLayout } from "@/components/auth/protected-layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ html {
         `}</style>
       </head>
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ProtectedLayout>{children}</ProtectedLayout>
+        </AuthProvider>
       </body>
     </html>
   );

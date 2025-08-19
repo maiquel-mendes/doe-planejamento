@@ -58,3 +58,38 @@ This document summarizes key information about the 'doe-planejamento' applicatio
 2.  Improve error handling (ongoing).
 3.  Add tests.
 4.  Address the remaining security concern of the NEXT_PUBLIC_API_KEY (if applicable, not directly handled by me).
+
+## 8. Recent Enhancements & Solutions
+
+This section details significant improvements and solutions implemented recently.
+
+### 8.1 Authentication & Authorization Refactor
+
+*   **JWT-based Authentication with HTTP-only Cookies:**
+    *   Migrated authentication from `localStorage` to secure JWTs stored in HTTP-only, `SameSite=Lax`, and `Secure` cookies.
+    *   **Backend Changes:**
+        *   `pages/api/auth/login.ts`: Now generates JWT and sets it as a cookie.
+        *   `pages/api/auth/session.ts` (NEW): Endpoint to verify JWT from cookie and return authenticated user data.
+        *   `pages/api/auth/logout.ts` (NEW): Endpoint to clear the JWT cookie.
+    *   **Frontend Changes:**
+        *   `contexts/auth-context.tsx`: Updated `login` to fetch user data from `/api/auth/session` and `logout` to call `/api/auth/logout`. `useEffect` now checks session via `/api/auth/session`. Removed all `localStorage` usage.
+*   **Application-Wide Route Protection:**
+    *   Implemented a robust route protection mechanism using `RouteGuard` and a new `ProtectedLayout` component.
+    *   `components/auth/route-guard.tsx`: Modified to redirect unauthenticated users to `/login`.
+    *   `components/auth/protected-layout.tsx` (NEW): A client component that wraps the application content in `app/layout.tsx` and conditionally applies `RouteGuard` to all routes except explicitly public ones (e.g., `/login`).
+    *   `app/layout.tsx`: Updated to use `ProtectedLayout` to protect the entire application.
+    *   `app/planejamento/[id]/page.tsx`: Removed redundant `RouteGuard` wrapper as protection is now handled by `ProtectedLayout`.
+*   **Backend API Protection (Middleware):**
+    *   `lib/auth-middleware.ts` (NEW): Created a reusable `authenticateToken` middleware to verify JWTs from cookies for protected API routes.
+    *   `pages/api/plannings/[id].ts`: Applied `authenticateToken` middleware.
+    *   `pages/api/plannings/index.ts`: Applied `authenticateToken` middleware.
+
+### 8.2 Resolved Issues
+
+*   **Login Redirection Failure:**
+    *   **Problem:** After successful login, the user was not redirected to the main page.
+    *   **Solution:** Added `router.push('/dashboard')` in `components/login-form.tsx` after successful authentication.
+*   **Logout Token Persistence:**
+    *   **Problem:** Upon logout, the JWT cookie remained active, allowing session persistence.
+    *   **Solution:** Ensured consistent cookie attributes (`Domain`, `Secure`, `Path`, `SameSite`, `HttpOnly`) between the login (`pages/api/auth/login.ts`) and logout (`pages/api/auth/logout.ts`) API responses. The `Domain` attribute is now dynamically set using `req.headers.host`.
+

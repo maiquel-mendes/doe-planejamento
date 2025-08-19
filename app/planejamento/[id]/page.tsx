@@ -442,5 +442,6 @@ export default function OperationalPlanningDetailPage() {
         </div>
       </div>
     </div>
+
   );
 }

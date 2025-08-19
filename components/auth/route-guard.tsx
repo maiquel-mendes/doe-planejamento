@@ -24,7 +24,7 @@ export function RouteGuard({
 
   useEffect(() => {
     if (!user) {
-      router.push("/");
+      router.push("/login");
       return;
     }
 

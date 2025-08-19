@@ -2,6 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 
+/**
+ * Handles user registration requests.
+ * @param req The NextApiRequest object.
+ * @param res The NextApiResponse object.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
