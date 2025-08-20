@@ -1,4 +1,5 @@
 import type { OperationalFunction } from "@/types/operational-planning";
+import { api } from "@/lib/api";
 
 // Helper to convert date strings to Date objects
 function parseDates(func: any): OperationalFunction {
@@ -10,7 +11,7 @@ function parseDates(func: any): OperationalFunction {
 }
 
 export const getAllFunctions = async (): Promise<OperationalFunction[]> => {
-  const response = await fetch("/api/functions");
+  const response = await api("/api/functions");
   if (!response.ok) {
     throw new Error("Failed to fetch functions");
   }
@@ -21,7 +22,7 @@ export const getAllFunctions = async (): Promise<OperationalFunction[]> => {
 export const getFunctionById = async (
   id: string,
 ): Promise<OperationalFunction | null> => {
-  const response = await fetch(`/api/functions/${id}`);
+  const response = await api(`/api/functions/${id}`);
   if (response.status === 404) {
     return null;
   }
@@ -35,7 +36,7 @@ export const getFunctionById = async (
 export const createFunction = async (
   data: Omit<OperationalFunction, "id" | "createdAt" | "updatedAt">,
 ): Promise<OperationalFunction> => {
-  const response = await fetch("/api/functions", {
+  const response = await api("/api/functions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -53,7 +54,7 @@ export const updateFunction = async (
   id: string,
   data: Partial<OperationalFunction>,
 ): Promise<OperationalFunction | null> => {
-  const response = await fetch(`/api/functions/${id}`, {
+  const response = await api(`/api/functions/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -71,7 +72,7 @@ export const updateFunction = async (
 };
 
 export const deleteFunction = async (id: string): Promise<boolean> => {
-  const response = await fetch(`/api/functions/${id}`, {
+  const response = await api(`/api/functions/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) {

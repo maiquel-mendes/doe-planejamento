@@ -28,7 +28,7 @@ export interface OperationalAssignment {
   operatorId: string;
   operatorName: string;
   assignedFunctions: { id: string; name: string; category: OperationalFunction['category']; }[];
-  vehicleId?: string;
+  vehicleId?: string | null;
   vehiclePrefix?: string;
   order: number;
 }

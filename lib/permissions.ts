@@ -1,36 +1,36 @@
-import type { User, UserRole } from "@/types/auth";
+import type { User, UserRole } from '@/types/auth';
 import type {
   AccessLog,
   Permission,
   RolePermissions,
-} from "@/types/permissions";
+} from '@/types/permissions';
 
 // Define permissions for each role
 export const ROLE_PERMISSIONS: RolePermissions = {
   admin: [
-    "users.view",
-    "users.create",
-    "users.edit",
-    "users.delete",
-    "planning.view",
-    "planning.create",
-    "planning.edit",
-    "planning.delete",
-    "planning.manage_progress",
-    "dashboard.view",
-    "dashboard.admin",
-    "system.audit",
-    "user.manage",
+    'users.view',
+    'users.create',
+    'users.edit',
+    'users.delete',
+    'planning.view',
+    'planning.create',
+    'planning.edit',
+    'planning.delete',
+    'planning.manage_progress',
+    'dashboard.view',
+    'dashboard.admin',
+    'system.audit',
+    'user.manage',
   ],
   editor: [
-    "planning.view",
-    "planning.create",
-    "planning.edit",
-    "planning.delete",
-    "planning.manage_progress",
-    "dashboard.view",
+    'planning.view',
+    'planning.create',
+    'planning.edit',
+    'planning.delete',
+    'planning.manage_progress',
+    'dashboard.view',
   ],
-  user: ["planning.view", "dashboard.view"],
+  user: ['planning.view', 'dashboard.view'],
 };
 
 // Access logs storage (in real app, this would be in database)
@@ -81,9 +81,9 @@ export const logAccess = (
   };
 
   accessLogs.push(log);
-  console.log(
-    `[ACCESS LOG] ${user.name} (${user.role}) ${action} ${resource} - ${success ? "SUCCESS" : "DENIED"}`,
-  );
+  // console.log(
+  //   `[ACCESS LOG] ${user.name} (${user.role}) ${action} ${resource} - ${success ? "SUCCESS" : "DENIED"}`,
+  // );
 };
 
 export const getAccessLogs = async (limit = 50): Promise<AccessLog[]> => {
@@ -95,10 +95,10 @@ export const getAccessLogs = async (limit = 50): Promise<AccessLog[]> => {
 
 export const canAccessRoute = (userRole: UserRole, route: string): boolean => {
   const routePermissions: { [key: string]: Permission[] } = {
-    "/usuarios": ["users.view"],
-    "/planejamento": ["planning.view"],
-    "/dashboard": ["dashboard.view"],
-    "/auditoria": ["system.audit"],
+    '/usuarios': ['users.view'],
+    '/planejamento': ['planning.view'],
+    '/dashboard': ['dashboard.view'],
+    '/auditoria': ['system.audit'],
   };
 
   const requiredPermissions = routePermissions[route];

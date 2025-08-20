@@ -27,7 +27,7 @@ interface FunctionsFormSectionProps {
     id: string;
     operatorId: string;
     operatorName: string;
-    vehicleId?: string;
+    vehicleId?: string | null;
     vehiclePrefix?: string;
     order: number;
     selectedFunction1Id: string;
@@ -37,7 +37,7 @@ interface FunctionsFormSectionProps {
     id: string;
     operatorId: string;
     operatorName: string;
-    vehicleId?: string;
+    vehicleId?: string | null;
     vehiclePrefix?: string;
     order: number;
     selectedFunction1Id: string;

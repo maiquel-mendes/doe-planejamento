@@ -1,10 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
+import { authenticateToken, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const functions = await prisma.operationalFunction.findMany();
+      const functions = await prisma.operationalFunction.findMany({
+        orderBy: {
+          name: 'asc',
+        },
+      });
       res.status(200).json(functions);
     } catch (error) {
       console.error('Error fetching functions:', error);
@@ -14,11 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const newFunctionData = req.body;
       const newFunction = await prisma.operationalFunction.create({
-        data: {
-          ...newFunctionData,
-          createdAt: new Date(newFunctionData.createdAt || Date.now()),
-          updatedAt: new Date(newFunctionData.updatedAt || Date.now()),
-        },
+        data: newFunctionData,
       });
       res.status(201).json(newFunction);
     } catch (error) {
@@ -30,3 +31,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
+export default authenticateToken(handler);

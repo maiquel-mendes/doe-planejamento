@@ -1,10 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import prisma from '@/lib/prisma';
+import { authenticateToken, AuthenticatedRequest } from '@/lib/auth-middleware';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const vehicles = await prisma.vehicle.findMany();
+      const vehicles = await prisma.vehicle.findMany({
+        orderBy: {
+          prefix: 'asc',
+        },
+      });
       res.status(200).json(vehicles);
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -14,11 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const newVehicleData = req.body;
       const newVehicle = await prisma.vehicle.create({
-        data: {
-          ...newVehicleData,
-          createdAt: new Date(newVehicleData.createdAt || Date.now()),
-          updatedAt: new Date(newVehicleData.updatedAt || Date.now()),
-        },
+        data: newVehicleData,
       });
       res.status(201).json(newVehicle);
     } catch (error) {
@@ -30,3 +31,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
+
+export default authenticateToken(handler);

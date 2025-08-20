@@ -68,11 +68,12 @@ This section details significant improvements and solutions implemented recently
 *   **JWT-based Authentication with HTTP-only Cookies:**
     *   Migrated authentication from `localStorage` to secure JWTs stored in HTTP-only, `SameSite=Lax`, and `Secure` cookies.
     *   **Backend Changes:**
-        *   `pages/api/auth/login.ts`: Now generates JWT and sets it as a cookie.
-        *   `pages/api/auth/session.ts` (NEW): Endpoint to verify JWT from cookie and return authenticated user data.
-        *   `pages/api/auth/logout.ts` (NEW): Endpoint to clear the JWT cookie.
+        *   `pages/api/auth/login.ts`: Now generates both a short-lived `accessToken` and a long-lived `refreshToken`. The `refreshToken` is hashed, stored in the new `RefreshToken` Prisma model, and set as an HTTP-only cookie. The `accessToken` is returned in the response body.
+        *   `pages/api/auth/logout.ts`: Now revokes the `refreshToken` in the database and clears the `refreshToken` cookie.
+        *   `pages/api/auth/session.ts`: No longer directly verifies JWT from cookies. It is now protected by the `authenticateToken` middleware, which attaches user information to the request.
     *   **Frontend Changes:**
-        *   `contexts/auth-context.tsx`: Updated `login` to fetch user data from `/api/auth/session` and `logout` to call `/api/auth/logout`. `useEffect` now checks session via `/api/auth/session`. Removed all `localStorage` usage.
+        *   `contexts/auth-context.tsx`: Updated `login` to accept an `accessToken` and use a new `api` utility to fetch user session data. `logout` also uses the `api` utility. A new `useEffect` initializes authentication by attempting to refresh the token. Removed all `localStorage` usage.
+        *   `components/login-form.tsx`: The direct `fetch` call to `/api/auth/login` is now handled here, managing `isLoading` and error states locally.
 *   **Application-Wide Route Protection:**
     *   Implemented a robust route protection mechanism using `RouteGuard` and a new `ProtectedLayout` component.
     *   `components/auth/route-guard.tsx`: Modified to redirect unauthenticated users to `/login`.
@@ -80,9 +81,10 @@ This section details significant improvements and solutions implemented recently
     *   `app/layout.tsx`: Updated to use `ProtectedLayout` to protect the entire application.
     *   `app/planejamento/[id]/page.tsx`: Removed redundant `RouteGuard` wrapper as protection is now handled by `ProtectedLayout`.
 *   **Backend API Protection (Middleware):**
-    *   `lib/auth-middleware.ts` (NEW): Created a reusable `authenticateToken` middleware to verify JWTs from cookies for protected API routes.
-    *   `pages/api/plannings/[id].ts`: Applied `authenticateToken` middleware.
-    *   `pages/api/plannings/index.ts`: Applied `authenticateToken` middleware.
+    *   `lib/auth-middleware.ts`: Created a reusable `authenticateToken` middleware to verify JWTs from the `Authorization` header (Bearer token). It now attaches `user: { id: string; role: string; }` to the request. Includes specific error handling for `jwt.TokenExpiredError` (returns 401) and other errors (returns 403).
+    *   All API routes (`pages/api/functions`, `pages/api/plannings`, `pages/api/users`, `pages/api/vehicles`) are now wrapped with `authenticateToken(handler);` for protection.
+*   **Centralized API Calls:**
+    *   A new `api` utility (`@/lib/api`) has been introduced to centralize HTTP requests. This utility is now used across `lib/operational-functions.ts`, `lib/operational-planning-management.ts`, `lib/user-management.ts`, `lib/vehicles.ts`, and `hooks/use-planning-select-data.ts`, ensuring consistent authentication headers and error handling.
 
 ### 8.2 Resolved Issues
 
@@ -146,3 +148,13 @@ This section details significant improvements and solutions implemented recently
 *   **Toaster Component Fix:**
     *   Corrected the implementation of `components/ui/toaster.tsx` to properly render toast notifications.
     *   **Benefit:** Ensured all application feedback messages are visible to the user.
+
+### 8.6 Code Quality & DX Improvements
+
+*   **Hook Dependency Management:**
+    *   Fixed `lint/correctness/useExhaustiveDependencies` in `hooks/use-operational-planning-form.ts` by wrapping `mapPlanningToFormData` with `useCallback` (with an empty dependency array) and including it in the `useEffect`'s dependency array.
+    *   Memoized `handleSubmit` in `components/planning/operational-planning-form-modal.tsx` using `useCallback` to prevent unnecessary re-renders.
+*   **API Query Ordering:**
+    *   Added `orderBy` clauses to `findMany` operations in several API routes (`pages/api/functions/index.ts`, `pages/api/plannings/index.ts`, `pages/api/users/index.ts`, `pages/api/vehicles/index.ts`) for better data presentation and user experience.
+*   **Type Refinements:**
+    *   Updated `vehicleId` in `components/planning/form-sections/functions-form-section.tsx` to `string | null` for more accurate type representation.

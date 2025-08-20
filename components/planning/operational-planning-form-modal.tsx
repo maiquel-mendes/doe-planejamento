@@ -1,5 +1,5 @@
 import { Upload } from "lucide-react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -82,10 +82,10 @@ export function OperationalPlanningFormModal({
     handleMedicalChange,
   } = useOperationalPlanningForm({ planning, users, functions, vehicles });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
-  };
+  }, [onSubmit, formData]);
 
   const isEditing = !!planning;
 
@@ -214,7 +214,10 @@ export function OperationalPlanningFormModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || isSelectDataLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading || isSelectDataLoading}
+            >
               {isLoading || isSelectDataLoading ? "Salvando..." : isEditing ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>

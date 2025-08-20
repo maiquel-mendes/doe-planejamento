@@ -1,4 +1,5 @@
 import type { OperationalPlanning } from "@/types/operational-planning";
+import { api } from "@/lib/api";
 
 // Helper to convert date strings to Date objects
 export function parseDates(planning: any): OperationalPlanning {
@@ -16,7 +17,7 @@ export function parseDates(planning: any): OperationalPlanning {
 export const getAllOperationalPlannings = async (): Promise<
   OperationalPlanning[]
 > => {
-  const response = await fetch("/api/plannings");
+  const response = await api("/api/plannings");
   if (!response.ok) {
     throw new Error("Failed to fetch plannings");
   }
@@ -27,7 +28,7 @@ export const getAllOperationalPlannings = async (): Promise<
 export const getOperationalPlanningById = async (
   id: string,
 ): Promise<OperationalPlanning | null> => {
-  const response = await fetch(`/api/plannings/${id}`);
+  const response = await api(`/api/plannings/${id}`);
   if (response.status === 404) {
     return null;
   }
@@ -42,7 +43,7 @@ export const createOperationalPlanning = async (
   data: Omit<OperationalPlanning, "id" | "createdAt" | "updatedAt">, // Omit generated fields
   createdBy: string,
 ): Promise<OperationalPlanning> => {
-  const response = await fetch("/api/plannings", {
+  const response = await api("/api/plannings", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -60,7 +61,7 @@ export const updateOperationalPlanning = async (
   id: string,
   data: Partial<OperationalPlanning>,
 ): Promise<OperationalPlanning | null> => {
-  const response = await fetch(`/api/plannings/${id}`, {
+  const response = await api(`/api/plannings/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -80,7 +81,7 @@ export const updateOperationalPlanning = async (
 export const deleteOperationalPlanning = async (
   id: string,
 ): Promise<boolean> => {
-  const response = await fetch(`/api/plannings/${id}`, {
+  const response = await api(`/api/plannings/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) {

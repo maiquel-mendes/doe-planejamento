@@ -130,6 +130,14 @@ export default function PlanningPage() {
     },
     onSuccess: (data, variables) => {
       const isEditing = !!editingPlanning;
+      if (isEditing && data) {
+        // This is crucial: update the editingPlanning state with the fresh data
+        // from the server to ensure the form re-initializes with the correct data
+        // if the user opens it again.
+        const newPlanning = JSON.parse(JSON.stringify(data));
+        setEditingPlanning(newPlanning);
+      }
+
       const action = isEditing ? "UPDATE_PLANNING" : "CREATE_PLANNING";
       const resource = isEditing
         ? `/planejamento/${editingPlanning?.id}`
@@ -137,8 +145,7 @@ export default function PlanningPage() {
       logAccess(action, resource, true);
       toast({
         title: "Sucesso",
-        description: `Planejamento ${isEditing ? "atualizado" : "criado"
-          } com sucesso.`,
+        description: `Planejamento ${isEditing ? "atualizado" : "criado"} com sucesso.`,
       });
     },
     onSettled: () => {

@@ -3,9 +3,15 @@ import prisma from '@/lib/prisma';
 import { authenticateToken, AuthenticatedRequest } from '@/lib/auth-middleware';
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+  const { user } = req; // User is attached by the middleware
+
   if (req.method === 'GET') {
     try {
-      const plannings = await prisma.operationalPlanning.findMany();
+      const plannings = await prisma.operationalPlanning.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
       res.status(200).json(plannings);
     } catch (error) {
       console.error('Error fetching plannings:', error);
@@ -14,14 +20,12 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   } else if (req.method === 'POST') {
     try {
       const newPlanningData = req.body;
-      // Ensure that nested JSON fields are correctly parsed if they come as strings
-      // Prisma handles JSON fields automatically if the input is a valid JSON object
       const newPlanning = await prisma.operationalPlanning.create({
         data: {
           ...newPlanningData,
-          // Convert Date strings back to Date objects if necessary, though Prisma usually handles this
-          createdAt: new Date(newPlanningData.createdAt || Date.now()),
-          updatedAt: new Date(newPlanningData.updatedAt || Date.now()),
+          createdBy: user.id, // Set the creator from the authenticated user
+          responsibleId: user.id, // Or determine this based on specific logic
+          responsibleName: 'TBD', // You might want to fetch user's name
         },
       });
       res.status(201).json(newPlanning);

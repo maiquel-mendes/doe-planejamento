@@ -4,6 +4,7 @@ import type {
   Vehicle,
 } from "@/types/operational-planning";
 import type { User } from "@/types/auth";
+import { api } from "@/lib/api";
 
 export function usePlanningSelectData() {
   const [users, setUsers] = useState<User[]>([]);
@@ -15,10 +16,14 @@ export function usePlanningSelectData() {
     const fetchData = async () => {
       try {
         const [usersRes, functionsRes, vehiclesRes] = await Promise.all([
-          fetch("/api/users"),
-          fetch("/api/functions"),
-          fetch("/api/vehicles"),
+          api("/api/users"),
+          api("/api/functions"),
+          api("/api/vehicles"),
         ]);
+
+        if (!usersRes.ok || !functionsRes.ok || !vehiclesRes.ok) {
+          throw new Error('One or more network responses were not ok');
+        }
 
         const usersData = await usersRes.json();
         const functionsData = await functionsRes.json();

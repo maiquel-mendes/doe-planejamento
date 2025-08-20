@@ -6,94 +6,77 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
 } from "react";
-
 import type { AuthContextType, User } from "@/types/auth";
+import { setAccessToken, injectAuthService, api } from "@/lib/api";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/**
- * Provides authentication context to the application.
- * Manages user login, logout, and authentication state.
- * @param children The React nodes to be rendered within the provider's scope.
- */
+export const authService = {
+  logout: () => {},
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const login = useCallback(async (accessToken: string) => {
+    try {
+      // Set the token for future API calls
+      setAccessToken(accessToken);
+
+      // Fetch the full user data
+      const response = await api('/api/auth/session');
+      if (!response.ok) {
+        throw new Error('Failed to fetch user session');
+      }
+      const userData = await response.json();
+      setUser(userData);
+    } catch (error) {
+      console.error("Login process failed:", error);
+      // Clear out everything if session fetch fails
+      setAccessToken(null);
+      setUser(null);
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setAccessToken(null);
+      setUser(null);
+    }
+  }, []);
+
   useEffect(() => {
-    const checkSession = async () => {
+    injectAuthService({ logout });
+
+    const initializeAuth = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch('/api/auth/session');
+        const response = await fetch('/api/auth/refresh', { method: 'POST' });
         if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
+          const { accessToken } = await response.json();
+          await login(accessToken); // Use the login flow to set user
         } else {
+          setAccessToken(null);
           setUser(null);
         }
       } catch (error) {
-        console.error('Session check error:', error);
+        console.error('Initial auth error:', error);
+        setAccessToken(null);
         setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
-    checkSession();
-  }, []);
 
-  /**
-   * Authenticates a user with the provided email and password.
-   * @param email The user's email.
-   * @param password The user's password.
-   * @returns A promise that resolves to true if authentication is successful, false otherwise.
-   */
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Login failed:", errorData.message, errorData);
-        return false;
-      }
-
-      const sessionResponse = await fetch('/api/auth/session');
-      if (sessionResponse.ok) {
-        const userData = await sessionResponse.json();
-        setUser(userData);
-        return true;
-      } else {
-        const errorData = await sessionResponse.json();
-        console.error('Failed to fetch user data after login:', errorData.message, errorData);
-        return false;
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  /**
-   * Logs out the current user.
-   */
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-    }
-  };
+    initializeAuth();
+  }, [login, logout]);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isLoading }}>

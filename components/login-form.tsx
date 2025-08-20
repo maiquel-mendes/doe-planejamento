@@ -19,7 +19,8 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
   const router = useRouter();
 
   const emailId = useId();
@@ -34,11 +35,27 @@ export function LoginForm() {
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Credenciais inválidas");
+      }
+
+      const { accessToken } = await response.json();
+      login(accessToken); // Pass the token to the context
       router.push("/dashboard");
-    } else {
-      setError("Credenciais inválidas");
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 

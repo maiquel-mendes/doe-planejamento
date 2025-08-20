@@ -24,12 +24,21 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
     }
   } else if (req.method === 'PUT') {
     try {
-      const updatedPlanningData = req.body;
+      // Destructure the body to ensure only expected fields are passed to the update
+      const {
+        id: bodyId, // Exclude the id from the data payload
+        createdAt, // Exclude createdAt
+        updatedAt, // Exclude updatedAt, we set it manually
+        assignments, // Explicitly pull out assignments
+        ...otherDataToUpdate // The rest of the fields are what we want to update
+      } = req.body;
+
       const updatedPlanning = await prisma.operationalPlanning.update({
         where: { id },
         data: {
-          ...updatedPlanningData,
-          updatedAt: new Date(), // Ensure updatedAt is updated
+          ...otherDataToUpdate,
+          assignments: assignments, // Set the JSON field explicitly
+          updatedAt: new Date(), // Manually set the updatedAt timestamp
         },
       });
       res.status(200).json(updatedPlanning);

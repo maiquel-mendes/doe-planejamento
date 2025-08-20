@@ -1,4 +1,5 @@
 import type { User } from "@/types/auth";
+import { api } from "@/lib/api";
 
 // Helper to convert date strings to Date objects
 function parseDates(user: any): User {
@@ -9,7 +10,7 @@ function parseDates(user: any): User {
 }
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const response = await fetch("/api/users");
+  const response = await api("/api/users");
   if (!response.ok) {
     throw new Error("Failed to fetch users");
   }
@@ -20,7 +21,7 @@ export const getAllUsers = async (): Promise<User[]> => {
 export const createUser = async (
   userData: Omit<User, "id" | "createdAt" | "isActive"> & { password: string },
 ): Promise<User> => {
-  const response = await fetch("/api/users", {
+  const response = await api("/api/users", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -38,7 +39,7 @@ export const updateUser = async (
   id: string,
   userData: Partial<Omit<User, "createdAt"> & { password?: string }>,
 ): Promise<User | null> => {
-  const response = await fetch(`/api/users/${id}`, {
+  const response = await api(`/api/users/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -57,7 +58,7 @@ export const updateUser = async (
 
 export const toggleUserStatus = async (id: string): Promise<User | null> => {
   // First, get the current user to know the current isActive status
-  const userResponse = await fetch(`/api/users/${id}`);
+  const userResponse = await api(`/api/users/${id}`);
   if (!userResponse.ok) {
     throw new Error(`Failed to fetch user with ID ${id} for status toggle`);
   }
@@ -67,7 +68,7 @@ export const toggleUserStatus = async (id: string): Promise<User | null> => {
   const updatedStatus = !currentUser.isActive;
 
   // Send a PUT request to update only the isActive status
-  const response = await fetch(`/api/users/${id}`, {
+  const response = await api(`/api/users/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -86,7 +87,7 @@ export const toggleUserStatus = async (id: string): Promise<User | null> => {
 };
 
 export const getUserById = async (id: string): Promise<User | null> => {
-  const response = await fetch(`/api/users/${id}`);
+  const response = await api(`/api/users/${id}`);
   if (response.status === 404) {
     return null;
   }
@@ -98,7 +99,7 @@ export const getUserById = async (id: string): Promise<User | null> => {
 };
 
 export const deleteUser = async (id: string): Promise<boolean> => {
-  const response = await fetch(`/api/users/${id}`, {
+  const response = await api(`/api/users/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) {

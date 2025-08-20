@@ -1,19 +1,31 @@
-import type { NextApiRequest, NextApiResponse } from "next";
 import jwt from "jsonwebtoken";
+import type { NextApiRequest, NextApiResponse } from "next";
 
+// Define a new interface for requests that have been authenticated.
 export interface AuthenticatedRequest extends NextApiRequest {
-  userId?: string;
-  userRole?: string;
+  user: {
+    id: string;
+    role: string;
+  };
 }
 
-export const authenticateToken = (
-  handler: (req: AuthenticatedRequest, res: NextApiResponse) => Promise<void>,
-) => {
-  return async (req: AuthenticatedRequest, res: NextApiResponse) => {
-    const token = req.cookies.token;
+// Define the type for a handler that uses the AuthenticatedRequest.
+type AuthenticatedHandler = (
+  req: AuthenticatedRequest,
+  res: NextApiResponse
+) => Promise<void> | void;
+
+/**
+ * Middleware to authenticate a token from the Authorization header.
+ * @param handler The handler to be executed if authentication is successful.
+ */
+export const authenticateToken = (handler: AuthenticatedHandler) => {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-      return res.status(401).json({ message: "Authentication required" });
+      return res.status(401).json({ message: "Authentication token required" });
     }
 
     if (!process.env.JWT_SECRET) {
@@ -26,12 +38,19 @@ export const authenticateToken = (
         userId: string;
         role: string;
       };
-      req.userId = decoded.userId;
-      req.userRole = decoded.role;
-      return handler(req, res);
+      
+      // Attach user information to the request object.
+      (req as AuthenticatedRequest).user = { id: decoded.userId, role: decoded.role };
+      
+      return handler(req as AuthenticatedRequest, res);
     } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        // If the token is expired, send 401 so the client can try to refresh it
+        return res.status(401).json({ message: "Token expired" });
+      }
+      // For other errors (e.g., invalid signature), send 403
       console.error("Token verification failed:", error);
-      return res.status(403).json({ message: "Invalid or expired token" });
+      return res.status(403).json({ message: "Invalid token" });
     }
   };
 };

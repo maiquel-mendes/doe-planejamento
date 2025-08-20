@@ -1,4 +1,5 @@
 import type { Vehicle } from "@/types/operational-planning";
+import { api } from "@/lib/api";
 
 // Helper to convert date strings to Date objects
 function parseDates(vehicle: any): Vehicle {
@@ -10,7 +11,7 @@ function parseDates(vehicle: any): Vehicle {
 }
 
 export const getAllVehicles = async (): Promise<Vehicle[]> => {
-  const response = await fetch("/api/vehicles");
+  const response = await api("/api/vehicles");
   if (!response.ok) {
     throw new Error("Failed to fetch vehicles");
   }
@@ -19,7 +20,7 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
 };
 
 export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
-  const response = await fetch(`/api/vehicles/${id}`);
+  const response = await api(`/api/vehicles/${id}`);
   if (response.status === 404) {
     return null;
   }
@@ -33,7 +34,7 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
 export const createVehicle = async (
   data: Omit<Vehicle, "id" | "createdAt" | "updatedAt">,
 ): Promise<Vehicle> => {
-  const response = await fetch("/api/vehicles", {
+  const response = await api("/api/vehicles", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -51,7 +52,7 @@ export const updateVehicle = async (
   id: string,
   data: Partial<Vehicle>,
 ): Promise<Vehicle | null> => {
-  const response = await fetch(`/api/vehicles/${id}`, {
+  const response = await api(`/api/vehicles/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -69,7 +70,7 @@ export const updateVehicle = async (
 };
 
 export const deleteVehicle = async (id: string): Promise<boolean> => {
-  const response = await fetch(`/api/vehicles/${id}`, {
+  const response = await api(`/api/vehicles/${id}`, {
     method: "DELETE",
   });
   if (!response.ok) {

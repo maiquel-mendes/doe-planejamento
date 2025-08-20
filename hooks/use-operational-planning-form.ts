@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
 import type {
   Location,
   OperationalAssignment,
@@ -8,44 +8,46 @@ import type {
   TimeSchedule,
   OperationalFunction,
   Vehicle,
-} from "@/types/operational-planning";
-import type { User } from "@/types/auth";
+} from '@/types/operational-planning';
+import type { User } from '@/types/auth';
 
 // --- Helper: blank objects with all required fields ---
 const blankTarget = (): Target => ({
-  id: "",
-  name: "",
-  alias: "", // Initialize alias to empty string
-  address: "",
+  id: '',
+  name: '',
+  alias: '', // Initialize alias to empty string
+  address: '',
 });
 const blankRoute = (): Route => ({
-  id: "",
-  name: "",
-  origin: "",
-  destination: "",
-  distance: "",
-  duration: "",
+  id: '',
+  name: '',
+  origin: '',
+  destination: '',
+  distance: '',
+  duration: '',
 });
 const blankLocation = (): Location => ({
-  id: "",
-  name: "",
-  address: "",
-  coordinates: "",
-  type: "alvo",
+  id: '',
+  name: '',
+  address: '',
+  coordinates: '',
+  type: 'alvo',
 });
 
 const blankAssignment = (): OperationalAssignment => ({
-  id: "",
-  operatorId: "",
-  operatorName: "",
+  id: '',
+  operatorId: '',
+  operatorName: '',
   assignedFunctions: [],
   order: 0,
+  vehicleId: null, // Ensure vehicleId is explicitly null
+  vehiclePrefix: '',
 });
 
 const blankSchedule = (): TimeSchedule => ({
-  id: "",
-  time: "",
-  activity: "",
+  id: '',
+  time: '',
+  activity: '',
 });
 
 interface UseOperationalPlanningFormProps {
@@ -61,48 +63,130 @@ export function useOperationalPlanningForm({
   functions,
   vehicles,
 }: UseOperationalPlanningFormProps) {
-  const [formData, setFormData] = useState<OperationalPlanning>(() => ({
-    introduction: {
-      serviceOrderNumber: "",
-      operationType: "",
-      description: "",
-      supportUnit: "",
-      mandateType: "",
-      operationDate: "",
-      operationTime: "",
-    },
-    targets: [],
-    images: [],
-    id: "",
-    assignments: [],
-    schedule: [],
-    communications: {
-      vehicleCall: "",
-      operatorCall: "",
-    },
-    peculiarities: {
-      searchObjects: [],
-      observations: "",
-      risks: "",
-    },
-    medical: {
-      medic: "",
-      medicId: "",
-      vehicleForTransport: "",
-      hospitalContact: "",
-      procedures: "",
-    },
-    complementaryMeasures: [],
-    routes: [],
-    locations: [],
-    status: "draft",
-    priority: "medium",
-    createdBy: "",
-    responsibleId: "",
-    responsibleName: "",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }));
+  const [formData, setFormData] = useState<OperationalPlanning>(() => {
+    const blankFormData: OperationalPlanning = {
+      introduction: {
+        serviceOrderNumber: '',
+        operationType: '',
+        description: '',
+        supportUnit: '',
+        mandateType: '',
+        operationDate: '',
+        operationTime: '',
+      },
+      targets: [],
+      images: [],
+      id: '',
+      assignments: [],
+      schedule: [],
+      communications: {
+        vehicleCall: '',
+        operatorCall: '',
+      },
+      peculiarities: {
+        searchObjects: [],
+        observations: '',
+        risks: '',
+      },
+      medical: {
+        medic: '',
+        medicId: '',
+        vehicleForTransport: '',
+        hospitalContact: '',
+        procedures: '',
+      },
+      complementaryMeasures: [],
+      routes: [],
+      locations: [],
+      status: 'draft',
+      priority: 'medium',
+      createdBy: '',
+      responsibleId: '',
+      responsibleName: '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return blankFormData;
+  });
+
+  // Helper function to map planning data to formData structure
+  const mapPlanningToFormData = useCallback((p: OperationalPlanning): OperationalPlanning => {
+    const validStatuses = ["draft", "approved", "in_progress", "completed", "cancelled"] as const;
+    const validPriorities = ["low", "medium", "high", "critical"] as const;
+
+    return {
+      id: p.id,
+      introduction: p.introduction,
+      targets: p.targets || [],
+      assignments: p.assignments || [],
+      images: p.images || [],
+      schedule: p.schedule || [],
+      communications: p.communications,
+      peculiarities: p.peculiarities,
+      medical: p.medical,
+      complementaryMeasures: p.complementaryMeasures || [],
+      routes: p.routes || [],
+      locations: p.locations || [],
+      status: validStatuses.includes(p.status as any) ? p.status as typeof validStatuses[number] : "draft",
+      priority: validPriorities.includes(p.priority as any) ? p.priority as typeof validPriorities[number] : "medium",
+      createdBy: p.createdBy || '',
+      responsibleId: p.responsibleId || '',
+      responsibleName: p.responsibleName || '',
+      createdAt: p.createdAt || new Date(),
+      updatedAt: p.updatedAt || new Date(),
+    };
+  }, []);
+
+  // useEffect to update formData when planning prop changes
+  useEffect(() => {
+    if (planning) {
+      setFormData(mapPlanningToFormData(planning));
+    } else {
+      // Reset form for new planning when planning prop becomes null
+      setFormData(() => ({
+        introduction: {
+          serviceOrderNumber: '',
+          operationType: '',
+          description: '',
+          supportUnit: '',
+          mandateType: '',
+          operationDate: '',
+          operationTime: '',
+        },
+        targets: [],
+        images: [],
+        id: '',
+        assignments: [],
+        schedule: [],
+        communications: {
+          vehicleCall: '',
+          operatorCall: '',
+        },
+        peculiarities: {
+          searchObjects: [],
+          observations: '',
+          risks: '',
+        },
+        medical: {
+          medic: '',
+          medicId: '',
+          vehicleForTransport: '',
+          hospitalContact: '',
+          procedures: '',
+        },
+        complementaryMeasures: [],
+        routes: [],
+        locations: [],
+        status: 'draft',
+        priority: 'medium',
+        createdBy: '',
+        responsibleId: '',
+        responsibleName: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+    }
+  }, [planning, mapPlanningToFormData]);
 
   const [newTarget, setNewTarget] = useState<Target>(blankTarget());
   const [newRoute, setNewRoute] = useState<Route>(blankRoute());
@@ -111,136 +195,24 @@ export function useOperationalPlanningForm({
     id: string;
     operatorId: string;
     operatorName: string;
-    vehicleId?: string;
+    vehicleId?: string | null;
     vehiclePrefix?: string;
     order: number;
     selectedFunction1Id: string;
     selectedFunction2Id: string;
   }>(() => ({
-    id: "",
-    operatorId: "",
-    operatorName: "",
+    id: '',
+    operatorId: '',
+    operatorName: '',
     order: 0,
-    selectedFunction1Id: "",
-    selectedFunction2Id: "",
+    selectedFunction1Id: '',
+    selectedFunction2Id: '',
   }));
   const [newScheduleItem, setNewScheduleItem] = useState<TimeSchedule>(
     blankSchedule(),
   );
-  const [newMeasure, setNewMeasure] = useState("");
-  const [newSearchObject, setNewSearchObject] = useState("");
-
-  useEffect(() => {
-    console.log('useOperationalPlanningForm useEffect: planning changed', planning);
-    if (planning) {
-      const newFormData = {
-        id: planning.id,
-        introduction: {
-          serviceOrderNumber: planning.introduction.serviceOrderNumber,
-          operationType: planning.introduction.operationType,
-          description: planning.introduction.description,
-          supportUnit: planning.introduction.supportUnit,
-          mandateType: planning.introduction.mandateType,
-          operationDate: planning.introduction.operationDate,
-          operationTime: planning.introduction.operationTime,
-        },
-        targets: planning.targets || [],
-        assignments: planning.assignments || [],
-        images: planning.images || [],
-
-        schedule: planning.schedule || [],
-        communications: {
-          vehicleCall: planning.communications.vehicleCall,
-          operatorCall: planning.communications.operatorCall,
-        },
-        peculiarities: {
-          searchObjects: planning.peculiarities.searchObjects || [],
-          observations: planning.peculiarities.observations,
-          risks: planning.peculiarities.risks,
-        },
-        medical: {
-          medic: planning.medical.medic,
-          medicId: planning.medical.medicId,
-          vehicleForTransport: planning.medical.vehicleForTransport,
-          hospitalContact: planning.medical.hospitalContact,
-          procedures: planning.medical.procedures || "",
-        },
-        complementaryMeasures: planning.complementaryMeasures || [],
-        routes: planning.routes || [],
-        locations: planning.locations || [],
-        status: planning.status || "draft",
-        priority: planning.priority || "medium",
-        createdBy: planning.createdBy || "",
-        responsibleId: planning.responsibleId || "",
-        responsibleName: planning.responsibleName || "",
-        createdAt: planning.createdAt || new Date(),
-        updatedAt: planning.updatedAt || new Date(),
-      };
-      setFormData(newFormData);
-      console.log('useOperationalPlanningForm useEffect: formData set to', newFormData);
-    } else {
-      // ... (reset form for new planning)
-      const blankFormData = {
-        introduction: {
-          serviceOrderNumber: "",
-          operationType: "",
-          description: "",
-          supportUnit: "",
-          mandateType: "",
-          operationDate: "",
-          operationTime: "",
-        },
-        targets: [],
-        images: [],
-        id: "",
-        assignments: [],
-        schedule: [],
-        communications: {
-          vehicleCall: "",
-          operatorCall: "",
-        },
-        peculiarities: {
-          searchObjects: [],
-          observations: "",
-          risks: "",
-        },
-        medical: {
-          medic: "",
-          medicId: "",
-          vehicleForTransport: "",
-          hospitalContact: "",
-          procedures: "",
-        },
-        complementaryMeasures: [],
-        routes: [],
-        locations: [],
-        status: "draft",
-        priority: "medium",
-        createdBy: "",
-        responsibleId: "",
-        responsibleName: "",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setFormData(blankFormData);
-      console.log('useOperationalPlanningForm useEffect: formData reset to blank', blankFormData);
-    }
-    setNewTarget(blankTarget());
-    setNewRoute(blankRoute());
-    setNewLocation(blankLocation());
-    setNewAssignment({
-      id: "",
-      operatorId: "",
-      operatorName: "",
-      order: 0,
-      selectedFunction1Id: "",
-      selectedFunction2Id: "",
-    });
-    setNewScheduleItem(blankSchedule());
-    setNewMeasure("");
-    setNewSearchObject("");
-    // eslint-disable-next-line
-  }, [planning]);
+  const [newMeasure, setNewMeasure] = useState('');
+  const [newSearchObject, setNewSearchObject] = useState('');
 
   // --- Handlers ---
   // Targets
@@ -265,18 +237,27 @@ export function useOperationalPlanningForm({
 
   // Assignments
   const addAssignment = (): { success: boolean; message?: string } => {
-    console.log("Attempting to add assignment...");
+    console.log('Attempting to add assignment...');
     if (!newAssignment.operatorId || !newAssignment.selectedFunction1Id) {
-      console.log("Validation failed: Operator and Function 1 are required.");
-      return { success: false, message: "Operador e Função 1 são obrigatórios." };
+      console.log('Validation failed: Operator and Function 1 are required.');
+      return {
+        success: false,
+        message: 'Operador e Função 1 são obrigatórios.',
+      };
     }
 
-    const assignedFunctions = [];
-    const selectedFunction1 = functions.find(f => f.id === newAssignment.selectedFunction1Id);
+    const assignedFunctions: {
+      id: string;
+      name: string;
+      category: 'entrada' | 'apoio' | 'comando' | 'especializada';
+    }[] = [];
+    const selectedFunction1 = functions.find(
+      (f) => f.id === newAssignment.selectedFunction1Id,
+    );
 
     if (!selectedFunction1) {
-      console.log("Validation failed: Invalid Function 1 selected.");
-      return { success: false, message: "Função 1 selecionada inválida." };
+      console.log('Validation failed: Invalid Function 1 selected.');
+      return { success: false, message: 'Função 1 selecionada inválida.' };
     }
     assignedFunctions.push({
       id: selectedFunction1.id,
@@ -285,15 +266,22 @@ export function useOperationalPlanningForm({
     });
 
     if (newAssignment.selectedFunction2Id) {
-      const selectedFunction2 = functions.find(f => f.id === newAssignment.selectedFunction2Id);
+      const selectedFunction2 = functions.find(
+        (f) => f.id === newAssignment.selectedFunction2Id,
+      );
       if (!selectedFunction2) {
-        console.log("Validation failed: Invalid Function 2 selected.");
-        return { success: false, message: "Função 2 selecionada inválida." };
+        console.log('Validation failed: Invalid Function 2 selected.');
+        return { success: false, message: 'Função 2 selecionada inválida.' };
       }
       // Validate different categories
       if (selectedFunction1.category === selectedFunction2.category) {
-        console.log("Validation failed: Functions must be from different categories.");
-        return { success: false, message: "As funções devem ser de categorias diferentes." };
+        console.log(
+          'Validation failed: Functions must be from different categories.',
+        );
+        return {
+          success: false,
+          message: 'As funções devem ser de categorias diferentes.',
+        };
       }
       assignedFunctions.push({
         id: selectedFunction2.id,
@@ -302,33 +290,37 @@ export function useOperationalPlanningForm({
       });
     }
 
-    const selectedOperator = users.find(u => u.id === newAssignment.operatorId);
-    const selectedVehicle = vehicles.find(v => v.id === newAssignment.vehicleId);
+    const selectedOperator = users.find(
+      (u) => u.id === newAssignment.operatorId,
+    );
+    const selectedVehicle = vehicles.find(
+      (v) => v.id === newAssignment.vehicleId,
+    );
 
-    setFormData({
-      ...formData,
+    setFormData((prevFormData) => ({
+      ...prevFormData,
       assignments: [
-        ...formData.assignments,
+        ...prevFormData.assignments,
         {
           id: Date.now().toString(),
           operatorId: newAssignment.operatorId,
-          operatorName: selectedOperator?.name || "",
+          operatorName: selectedOperator?.name || '',
           assignedFunctions: assignedFunctions,
-          vehicleId: newAssignment.vehicleId,
-          vehiclePrefix: selectedVehicle?.prefix || "",
-          order: formData.assignments.length + 1,
+          vehicleId: newAssignment.vehicleId || null,
+          vehiclePrefix: selectedVehicle?.prefix || '',
+          order: prevFormData.assignments.length + 1,
         },
       ],
-    });
+    }));
     setNewAssignment({
-      id: "",
-      operatorId: "",
-      operatorName: "",
+      id: '',
+      operatorId: '',
+      operatorName: '',
       order: 0,
-      selectedFunction1Id: "",
-      selectedFunction2Id: "",
+      selectedFunction1Id: '',
+      selectedFunction2Id: '',
     });
-    console.log("Assignment added successfully. newAssignment reset.");
+    console.log('Assignment added successfully. newAssignment reset.');
     return { success: true };
   };
   const removeAssignment = (id: string) => {
@@ -340,66 +332,69 @@ export function useOperationalPlanningForm({
 
   const updateFunctionAssignment = (
     index: number,
-    field: "operatorId" | "vehicleId" | "function1Id" | "function2Id",
+    field: 'operatorId' | 'vehicleId' | 'function1Id' | 'function2Id',
     value: string,
   ) => {
-    const updatedAssignments = [...formData.assignments];
-    const assignmentToUpdate = updatedAssignments[index];
-
-    if (field === "operatorId") {
-      assignmentToUpdate.operatorId = value;
-      const selectedOperator = users.find(u => u.id === value);
-      assignmentToUpdate.operatorName = selectedOperator?.name || "";
-    } else if (field === "vehicleId") {
-      assignmentToUpdate.vehicleId = value;
-      const selectedVehicle = vehicles.find(v => v.id === value);
-      assignmentToUpdate.vehiclePrefix = selectedVehicle?.prefix || "";
-    } else if (field === "function1Id") {
-      const selectedFunction = functions.find(f => f.id === value);
-      if (selectedFunction) {
-        // Ensure categories are different if a second function is already assigned
-        if (assignmentToUpdate.assignedFunctions.length > 1 && assignmentToUpdate.assignedFunctions[1].category === selectedFunction.category) {
-          console.error("As funções devem ser de categorias diferentes.");
-          return; // Prevent update if categories are the same
+    setFormData((prevFormData) => {
+      const newAssignments = prevFormData.assignments.map((assignment, i) => {
+        if (i !== index) {
+          return assignment;
         }
-        assignmentToUpdate.assignedFunctions[0] = {
-          id: selectedFunction.id,
-          name: selectedFunction.name,
-          category: selectedFunction.category,
+
+        let updatedFunctions = [...assignment.assignedFunctions];
+        if (field === 'function1Id') {
+          const selectedFunction = functions.find((f) => f.id === value);
+          if (selectedFunction) {
+            updatedFunctions = [
+              {
+                id: selectedFunction.id,
+                name: selectedFunction.name,
+                category: selectedFunction.category,
+              },
+              ...updatedFunctions.slice(1),
+            ];
+          } else {
+            updatedFunctions = updatedFunctions.slice(1);
+          }
+        } else if (field === 'function2Id') {
+          const selectedFunction = functions.find((f) => f.id === value);
+          if (selectedFunction) {
+            updatedFunctions = [
+              updatedFunctions[0],
+              {
+                id: selectedFunction.id,
+                name: selectedFunction.name,
+                category: selectedFunction.category,
+              },
+            ];
+          } else {
+            updatedFunctions = [updatedFunctions[0]];
+          }
+        }
+
+        const selectedOperator =
+          field === 'operatorId'
+            ? users.find((u) => u.id === value)
+            : users.find((u) => u.id === assignment.operatorId);
+        const selectedVehicle =
+          field === 'vehicleId'
+            ? vehicles.find((v) => v.id === value)
+            : vehicles.find((v) => v.id === assignment.vehicleId);
+
+        return {
+          ...assignment,
+          operatorId: field === 'operatorId' ? value : assignment.operatorId,
+          operatorName: selectedOperator?.name || '',
+          vehicleId: field === 'vehicleId' ? value : assignment.vehicleId,
+          vehiclePrefix: selectedVehicle?.prefix || '',
+          assignedFunctions: updatedFunctions.filter(Boolean), // filter(Boolean) removes undefined/null items
         };
-      } else {
-        assignmentToUpdate.assignedFunctions.splice(0, 1); // Remove if function is unselected
-      }
-    } else if (field === "function2Id") {
-      const selectedFunction = functions.find(f => f.id === value);
-      if (selectedFunction) {
-        // Ensure categories are different from the first function
-        if (assignmentToUpdate.assignedFunctions.length > 0 && assignmentToUpdate.assignedFunctions[0].category === selectedFunction.category) {
-          console.error("As funções devem ser de categorias diferentes.");
-          return; // Prevent update if categories are the same
-        }
-        if (assignmentToUpdate.assignedFunctions.length === 0) {
-          // If no first function, add it as the first
-          assignmentToUpdate.assignedFunctions.push({
-            id: selectedFunction.id,
-            name: selectedFunction.name,
-            category: selectedFunction.category,
-          });
-        } else {
-          assignmentToUpdate.assignedFunctions[1] = {
-            id: selectedFunction.id,
-            name: selectedFunction.name,
-            category: selectedFunction.category,
-          };
-        }
-      } else {
-        assignmentToUpdate.assignedFunctions.splice(1, 1); // Remove if function is unselected
-      }
-    }
+      });
 
-    setFormData({
-      ...formData,
-      assignments: updatedAssignments,
+      return {
+        ...prevFormData,
+        assignments: newAssignments,
+      };
     });
   };
 
@@ -477,7 +472,7 @@ export function useOperationalPlanningForm({
           newMeasure.trim(),
         ],
       });
-      setNewMeasure("");
+      setNewMeasure('');
     }
   };
   const removeMeasure = (index: number) => {
@@ -502,7 +497,7 @@ export function useOperationalPlanningForm({
           ],
         },
       });
-      setNewSearchObject("");
+      setNewSearchObject('');
     }
   };
   const removeSearchObject = (index: number) => {
@@ -519,7 +514,7 @@ export function useOperationalPlanningForm({
 
   // Medical
   const handleMedicalChange = (
-    field: keyof OperationalPlanning["medical"],
+    field: keyof OperationalPlanning['medical'],
     value: string,
   ) => {
     setFormData({
