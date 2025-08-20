@@ -27,7 +27,7 @@ import type { User, UserRole } from "@/types/auth";
 interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (userData: Omit<User, "id" | "createdAt"> & { password?: string }) => Promise<void>;
+  onSubmit: (userData: Omit<User, "id" | "createdAt"> & { password?: string }) => Promise<User | null>;
   user?: User | null;
   isLoading?: boolean;
 }

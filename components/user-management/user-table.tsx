@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { User } from "@/types/auth";
 
 interface UserTableProps {
@@ -87,7 +88,13 @@ export function UserTable({
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow
+              key={user.id}
+              className={cn(
+                "transition-opacity",
+                user.isOptimistic && "opacity-50",
+              )}
+            >
               <TableCell className="font-medium">{user.name}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>

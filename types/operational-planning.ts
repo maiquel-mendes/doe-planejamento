@@ -8,6 +8,7 @@ export interface OperationalFunction {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isOptimistic?: boolean;
 }
 
 export interface Vehicle {
@@ -19,6 +20,7 @@ export interface Vehicle {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isOptimistic?: boolean;
 }
 
 export interface OperationalAssignment {
@@ -118,6 +120,7 @@ export interface OperationalPlanning {
   responsibleName: string;
   createdAt: Date;
   updatedAt: Date;
+  isOptimistic?: boolean;
 }
 
 export interface Image {

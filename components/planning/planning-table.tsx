@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import type { OperationalPlanning } from "@/types/operational-planning";
 
 interface PlanningTableProps {
@@ -124,7 +125,13 @@ export function PlanningTable({
         </TableHeader>
         <TableBody>
           {plannings.map((planning) => (
-            <TableRow key={planning.id}>
+            <TableRow
+              key={planning.id}
+              className={cn(
+                "transition-opacity",
+                planning.isOptimistic && "opacity-50",
+              )}
+            >
               <TableCell>
                 <div>
                   <div className="font-medium">

@@ -1,9 +1,10 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useCallback, useEffect, useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import {
@@ -60,50 +61,185 @@ import {
   getAllVehicles,
   updateVehicle,
 } from "@/lib/vehicles";
+import { cn } from "@/lib/utils";
 import type { Vehicle } from "@/types/operational-planning";
 
 export default function VehiclesPage() {
   const { hasPermission, logAccess } = usePermissions();
   const router = useRouter();
   const { toast } = useToast();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<Omit<Vehicle, "id" | "createdAt" | "updatedAt"> & { id?: string }>(() => ({
-    prefix: editingVehicle?.prefix || "",
-    type: editingVehicle?.type || "viatura",
-    model: editingVehicle?.model || "",
-    capacity: editingVehicle?.capacity || 4,
-    isActive: editingVehicle?.isActive ?? true,
-  }));
+  const [formData, setFormData] = useState<Omit<Vehicle, "id" | "createdAt" | "updatedAt">>({
+    prefix: "",
+    type: "viatura",
+    model: "",
+    capacity: 4,
+    isActive: true,
+  });
 
-  const canEdit = hasPermission("user.manage"); // Apenas admins podem gerenciar viaturas
+  const canEdit = hasPermission("user.manage");
   const canCreate = hasPermission("user.manage");
   const canDelete = hasPermission("user.manage");
 
-  const loadVehicles = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      logAccess("LOAD_VEHICLES", "/viaturas", true);
-      const vehiclesData = await getAllVehicles();
-      setVehicles(vehiclesData.map((v: any) => ({ ...v, createdAt: new Date(v.createdAt), updatedAt: new Date(v.updatedAt) })));
-    } catch (error) {
-      logAccess("LOAD_VEHICLES", "/viaturas", false, "Failed to load vehicles");
+  useEffect(() => {
+    if (isFormModalOpen) {
+      if (editingVehicle) {
+        setFormData({
+          prefix: editingVehicle.prefix,
+          type: editingVehicle.type,
+          model: editingVehicle.model,
+          capacity: editingVehicle.capacity,
+          isActive: editingVehicle.isActive,
+        });
+      } else {
+        setFormData({
+          prefix: "",
+          type: "viatura",
+          model: "",
+          capacity: 4,
+          isActive: true,
+        });
+      }
+    }
+  }, [isFormModalOpen, editingVehicle]);
+
+
+  const { data: vehicles = [], isLoading, isError } = useQuery<Vehicle[]>({
+    queryKey: ["vehicles"],
+    queryFn: async () => {
+      try {
+        logAccess("LOAD_VEHICLES", "/viaturas", true);
+        const data = await getAllVehicles();
+        return data.map((v: Vehicle) => ({ ...v, createdAt: new Date(v.createdAt), updatedAt: new Date(v.updatedAt) }));
+      } catch (error) {
+        logAccess("LOAD_VEHICLES", "/viaturas", false, "Failed to load vehicles");
+        toast({ title: "Erro", description: "Não foi possível carregar as viaturas.", variant: "destructive" });
+        throw error;
+      }
+    },
+  });
+
+  const { mutate: saveVehicle, isPending: isSubmitting } = useMutation({
+    mutationFn: async (data: Omit<Vehicle, "id" | "createdAt" | "updatedAt">) => {
+      const isEditing = !!editingVehicle;
+      if (isEditing) {
+        if (!canEdit) throw new Error("Permissão para editar negada.");
+        return updateVehicle(editingVehicle.id, data);
+      }
+      if (!canCreate) throw new Error("Permissão para criar negada.");
+      return createVehicle(data);
+    },
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["vehicles"] });
+      const previousVehicles =
+        queryClient.getQueryData<Vehicle[]>(["vehicles"]) || [];
+
+      if (editingVehicle) {
+        logAccess(
+          "UPDATE_VEHICLE_OPTIMISTIC",
+          `/viaturas/${editingVehicle.id}`,
+          true,
+        );
+        queryClient.setQueryData<Vehicle[]>(
+          ["vehicles"],
+          (old = []) =>
+            old.map((vehicle) =>
+              vehicle.id === editingVehicle.id
+                ? { ...vehicle, ...newData }
+                : vehicle,
+            ),
+        );
+      } else {
+        logAccess("CREATE_VEHICLE_OPTIMISTIC", `/viaturas`, true);
+        const optimisticVehicle: Vehicle = {
+          id: `optimistic-${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isOptimistic: true,
+          ...newData,
+        };
+        queryClient.setQueryData<Vehicle[]>(
+          ["vehicles"],
+          (old = []) => [...old, optimisticVehicle],
+        );
+      }
+
+      setIsFormModalOpen(false);
+      return { previousVehicles };
+    },
+    onError: (err: Error, newData, context) => {
+      queryClient.setQueryData(["vehicles"], context?.previousVehicles || []);
+
+      const isEditing = !!editingVehicle;
+      const action = isEditing ? "UPDATE_VEHICLE" : "CREATE_VEHICLE";
+      const resource = isEditing ? `/viaturas/${editingVehicle?.id}` : "/viaturas";
+      logAccess(action, resource, false, err.message);
+
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar as viaturas",
+        title: "Erro ao Salvar",
+        description: `A alteração foi revertida. Erro: ${err.message}`,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [logAccess, toast]);
+    },
+    onSuccess: (data, variables) => {
+      const isEditing = !!editingVehicle;
+      const action = isEditing ? "UPDATE_VEHICLE" : "CREATE_VEHICLE";
+      const resource = isEditing ? `/viaturas/${editingVehicle?.id}` : "/viaturas";
+      logAccess(action, resource, true);
+      toast({
+        title: "Sucesso",
+        description: `Viatura ${isEditing ? "atualizada" : "criada"} com sucesso.`,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
 
-  useEffect(() => {
-    loadVehicles();
-  }, [loadVehicles]);
+  const { mutate: removeVehicle } = useMutation({
+    mutationFn: deleteVehicle,
+    onMutate: async (vehicleId: string) => {
+      logAccess("DELETE_VEHICLE_OPTIMISTIC", `/viaturas/${vehicleId}`, true);
+      await queryClient.cancelQueries({ queryKey: ["vehicles"] });
+      const previousVehicles = queryClient.getQueryData<Vehicle[]>(["vehicles"]);
+      if (previousVehicles) {
+        queryClient.setQueryData(
+          ["vehicles"],
+          previousVehicles.filter((vehicle) => vehicle.id !== vehicleId),
+        );
+      }
+      return { previousVehicles };
+    },
+    onError: (err: Error, vehicleId, context) => {
+      if (context?.previousVehicles) {
+        queryClient.setQueryData(["vehicles"], context.previousVehicles);
+      }
+      logAccess(
+        "DELETE_VEHICLE_ERROR",
+        `/viaturas/${vehicleId}`,
+        false,
+        err.message,
+      );
+      toast({
+        title: "Exclusão falhou",
+        description: "A alteração foi revertida.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (_, vehicleId) => {
+      logAccess("DELETE_VEHICLE_SUCCESS", `/viaturas/${vehicleId}`, true);
+      toast({
+        title: "Sucesso",
+        description: "Viatura excluída com sucesso.",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
 
   const handleCreateVehicle = () => {
     if (!canCreate) return;
@@ -119,125 +255,36 @@ export default function VehiclesPage() {
     setIsFormModalOpen(true);
   };
 
-  const handleSubmitVehicle = async (e: React.FormEvent) => {
+  const handleSubmitVehicle = (e: React.FormEvent) => {
     e.preventDefault();
-
-    try {
-      setIsSubmitting(true);
-
-      if (editingVehicle) {
-        if (!canEdit) {
-          logAccess(
-            "UPDATE_VEHICLE",
-            `/viaturas/${editingVehicle.id}`,
-            false,
-            "No edit permission",
-          );
-          return;
-        }
-        await updateVehicle(editingVehicle.id, formData);
-        logAccess("UPDATE_VEHICLE", `/viaturas/${editingVehicle.id}`, true);
-        toast({
-          title: "Sucesso",
-          description: "Viatura atualizada com sucesso",
-        });
-      } else {
-        if (!canCreate) {
-          logAccess(
-            "CREATE_VEHICLE",
-            "/viaturas",
-            false,
-            "No create permission",
-          );
-          return;
-        }
-        await createVehicle(formData);
-        logAccess("CREATE_VEHICLE", "/viaturas", true);
-        toast({
-          title: "Sucesso",
-          description: "Viatura criada com sucesso",
-        });
-      }
-
-      setIsFormModalOpen(false);
-      loadVehicles();
-    } catch (error) {
-      const action = editingVehicle ? "UPDATE_VEHICLE" : "CREATE_VEHICLE";
-      const resource = editingVehicle
-        ? `/viaturas/${editingVehicle.id}`
-        : "/viaturas";
-      logAccess(action, resource, false, "Failed to save vehicle");
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar a viatura",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    saveVehicle(formData);
   };
 
-  const handleDeleteVehicle = async (vehicleId: string) => {
+  const handleDeleteVehicle = (vehicleId: string) => {
     if (!canDelete) {
-      logAccess(
-        "DELETE_VEHICLE",
-        `/viaturas/${vehicleId}`,
-        false,
-        "No delete permission",
-      );
+      logAccess("DELETE_VEHICLE", `/viaturas/${vehicleId}`, false, "No delete permission");
       return;
     }
-
-    try {
-      await deleteVehicle(vehicleId);
-      logAccess("DELETE_VEHICLE", `/viaturas/${vehicleId}`, true);
-      toast({
-        title: "Sucesso",
-        description: "Viatura excluída com sucesso",
-      });
-      loadVehicles();
-    } catch (error) {
-      logAccess(
-        "DELETE_VEHICLE",
-        `/viaturas/${vehicleId}`,
-        false,
-        "Failed to delete vehicle",
-      );
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a viatura",
-        variant: "destructive",
-      });
-    }
+    removeVehicle(vehicleId);
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "viatura":
-        return "Viatura";
-      case "moto":
-        return "Motocicleta";
-      case "van":
-        return "Van";
-      case "blindado":
-        return "Blindado";
-      default:
-        return type;
+      case "viatura": return "Viatura";
+      case "moto": return "Motocicleta";
+      case "van": return "Van";
+      case "blindado": return "Blindado";
+      default: return type;
     }
   };
 
   const getTypeVariant = (type: string) => {
     switch (type) {
-      case "viatura":
-        return "default";
-      case "moto":
-        return "secondary";
-      case "van":
-        return "outline";
-      case "blindado":
-        return "destructive";
-      default:
-        return "outline";
+      case "viatura": return "default";
+      case "moto": return "secondary";
+      case "van": return "outline";
+      case "blindado": return "destructive";
+      default: return "outline";
     }
   };
 
@@ -252,19 +299,13 @@ export default function VehiclesPage() {
       <div className="min-h-screen bg-muted/30 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/")}
-              size="sm"
-            >
+            <Button variant="outline" onClick={() => router.push("/")} size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-primary">Viaturas</h1>
-              <p className="text-muted-foreground">
-                Gerencie as viaturas disponíveis para operações
-              </p>
+              <p className="text-muted-foreground">Gerencie as viaturas disponíveis para operações</p>
             </div>
           </div>
 
@@ -273,10 +314,7 @@ export default function VehiclesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Viaturas</CardTitle>
-                  <CardDescription>
-                    Lista de todas as viaturas disponíveis para atribuição em
-                    operações.
-                  </CardDescription>
+                  <CardDescription>Lista de todas as viaturas disponíveis para atribuição em operações.</CardDescription>
                 </div>
                 <PermissionGuard permission="user.manage">
                   <Button onClick={handleCreateVehicle}>
@@ -289,9 +327,11 @@ export default function VehiclesPage() {
             <CardContent>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="text-muted-foreground">
-                    Carregando viaturas...
-                  </div>
+                  <div className="text-muted-foreground">Carregando viaturas...</div>
+                </div>
+              ) : isError ? (
+                <div className="flex items-center justify-center py-8 text-red-600">
+                  Ocorreu um erro ao carregar as viaturas.
                 </div>
               ) : (
                 <div className="rounded-md border">
@@ -308,34 +348,28 @@ export default function VehiclesPage() {
                     </TableHeader>
                     <TableBody>
                       {vehicles.map((vehicle) => (
-                        <TableRow key={vehicle.id}>
-                          <TableCell className="font-medium">
-                            {vehicle.prefix}
-                          </TableCell>
+                        <TableRow
+                          key={vehicle.id}
+                          className={cn(
+                            "transition-opacity",
+                            vehicle.isOptimistic && "opacity-50",
+                          )}
+                        >
+                          <TableCell className="font-medium">{vehicle.prefix}</TableCell>
                           <TableCell>
-                            <Badge variant={getTypeVariant(vehicle.type)}>
-                              {getTypeLabel(vehicle.type)}
-                            </Badge>
+                            <Badge variant={getTypeVariant(vehicle.type)}>{getTypeLabel(vehicle.type)}</Badge>
                           </TableCell>
                           <TableCell>{vehicle.model}</TableCell>
                           <TableCell>{vehicle.capacity} pessoas</TableCell>
                           <TableCell>
-                            <Badge
-                              variant={
-                                vehicle.isActive ? "default" : "secondary"
-                              }
-                            >
+                            <Badge variant={vehicle.isActive ? "default" : "secondary"}>
                               {vehicle.isActive ? "Ativa" : "Inativa"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               {canEdit && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEditVehicle(vehicle)}
-                                >
+                                <Button variant="outline" size="sm" onClick={() => handleEditVehicle(vehicle)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
                               )}
@@ -348,24 +382,14 @@ export default function VehiclesPage() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>
-                                        Confirmar exclusão
-                                      </AlertDialogTitle>
+                                      <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Tem certeza que deseja excluir a viatura
-                                        "{vehicle.prefix}"? Esta ação não pode
-                                        ser desfeita.
+                                        Tem certeza que deseja excluir a viatura "{vehicle.prefix}"? Esta ação não pode ser desfeita.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                      <AlertDialogCancel>
-                                        Cancelar
-                                      </AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() =>
-                                          handleDeleteVehicle(vehicle.id)
-                                        }
-                                      >
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDeleteVehicle(vehicle.id)}>
                                         Excluir
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
@@ -386,41 +410,22 @@ export default function VehiclesPage() {
           <Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>
-                  {editingVehicle ? "Editar Viatura" : "Nova Viatura"}
-                </DialogTitle>
+                <DialogTitle>{editingVehicle ? "Editar Viatura" : "Nova Viatura"}</DialogTitle>
                 <DialogDescription>
-                  {editingVehicle
-                    ? "Edite as informações da viatura."
-                    : "Preencha as informações para criar uma nova viatura."}
+                  {editingVehicle ? "Edite as informações da viatura." : "Preencha as informações para criar uma nova viatura."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmitVehicle}>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <Label htmlFor={prefixId}>Prefixo</Label>
-                    <Input
-                      id={prefixId}
-                      value={formData.prefix}
-                      onChange={(e) =>
-                        setFormData({ ...formData, prefix: e.target.value })
-                      }
-                      placeholder="Ex: D-0210"
-                      required
-                    />
+                    <Input id={prefixId} value={formData.prefix} onChange={(e) => setFormData({ ...formData, prefix: e.target.value })} placeholder="Ex: D-0210" required />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor={typeId}>Tipo</Label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(
-                        value: "viatura" | "moto" | "van" | "blindado",
-                      ) => setFormData({ ...formData, type: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
+                    <Select value={formData.type} onValueChange={(value: "viatura" | "moto" | "van" | "blindado") => setFormData({ ...formData, type: value })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="viatura">Viatura</SelectItem>
                         <SelectItem value="moto">Motocicleta</SelectItem>
@@ -432,61 +437,23 @@ export default function VehiclesPage() {
 
                   <div className="grid gap-2">
                     <Label htmlFor={modelId}>Modelo</Label>
-                    <Input
-                      id={modelId}
-                      value={formData.model}
-                      onChange={(e) =>
-                        setFormData({ ...formData, model: e.target.value })
-                      }
-                      placeholder="Ex: Toyota Hilux"
-                      required
-                    />
+                    <Input id={modelId} value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} placeholder="Ex: Toyota Hilux" required />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor={capacityId}>Capacidade</Label>
-                    <Input
-                      id={capacityId}
-                      type="number"
-                      value={formData.capacity}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          capacity: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="Número de pessoas"
-                      min="1"
-                      max="20"
-                      required
-                    />
+                    <Input id={capacityId} type="number" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: Number.parseInt(e.target.value, 10) || 0 })} placeholder="Número de pessoas" min="1" max="20" required />
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id={isActiveId}
-                      checked={formData.isActive}
-                      onCheckedChange={(checked) =>
-                        setFormData({ ...formData, isActive: checked })
-                      }
-                    />
+                    <Switch id={isActiveId} checked={formData.isActive} onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })} />
                     <Label htmlFor={isActiveId}>Viatura ativa</Label>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsFormModalOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setIsFormModalOpen(false)}>Cancelar</Button>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting
-                      ? "Salvando..."
-                      : editingVehicle
-                        ? "Salvar"
-                        : "Criar"}
+                    {isSubmitting ? "Salvando..." : editingVehicle ? "Salvar" : "Criar"}
                   </Button>
                 </DialogFooter>
               </form>

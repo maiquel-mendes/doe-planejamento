@@ -122,3 +122,27 @@ This section details significant improvements and solutions implemented recently
         *   Display `assignedFunctions` correctly.
         *   Fetch and display creator's name.
         *   Remove the display of the "Frequência" field.
+
+### 8.5 Data Management with TanStack Query & Optimistic UI
+
+*   **Migration to TanStack Query:**
+    *   Refactored all major CRUD pages (`app/funcoes/page.tsx`, `app/viaturas/page.tsx`, `app/usuarios/page.tsx`, `app/planejamento/page.tsx`) to use `useQuery` for data fetching and `useMutation` for all CUD (Create, Update, Delete) operations.
+    *   Introduced `QueryClientProvider` at the application root (`app/layout.tsx`) for global state management.
+    *   **Benefit:** Significantly reduced boilerplate code, improved readability, and centralized asynchronous state management.
+
+*   **Comprehensive Optimistic UI Updates:**
+    *   Implemented optimistic updates for **delete** operations across all CRUD pages. Items now disappear instantly upon user action.
+    *   Implemented optimistic updates for **toggle status** (e.g., user active/inactive) on the `app/usuarios/page.tsx` page, providing immediate visual feedback.
+    *   Implemented optimistic updates for **edit** operations across all CRUD pages. Changes are reflected instantly in the UI.
+    *   Implemented optimistic updates for **create** operations across all CRUD pages. New items appear immediately in the list with a temporary ID and visual cue.
+    *   **Mechanism:** Utilized `onMutate` to update the cache optimistically, `onError` for rollback, `onSuccess` for success notifications, and `onSettled` for query invalidation and final data synchronization.
+    *   **Benefit:** Drastically improved perceived performance and user experience by providing instant feedback on user actions.
+
+*   **Visual Polishing for Optimistic Items:**
+    *   Modified relevant type definitions (`types/operational-planning.ts`, `types/auth.ts`) to include an `isOptimistic?: boolean` flag.
+    *   Updated table row components (`components/planning/planning-table.tsx`, `components/user-management/user-table.tsx`, and directly in `app/funcoes/page.tsx`, `app/viaturas/page.tsx`) to apply a subtle visual cue (e.g., `opacity-50`) to optimistically created items until server confirmation.
+    *   **Benefit:** Enhanced user clarity, indicating items that are still being processed by the server.
+
+*   **Toaster Component Fix:**
+    *   Corrected the implementation of `components/ui/toaster.tsx` to properly render toast notifications.
+    *   **Benefit:** Ensured all application feedback messages are visible to the user.

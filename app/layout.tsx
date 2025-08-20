@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type React from "react";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ProtectedLayout } from "@/components/auth/protected-layout";
+import TanstackProvider from "@/components/tanstack-provider";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -32,7 +33,9 @@ html {
       </head>
       <body>
         <AuthProvider>
-          <ProtectedLayout>{children}</ProtectedLayout>
+          <TanstackProvider>
+            <ProtectedLayout>{children}</ProtectedLayout>
+          </TanstackProvider>
         </AuthProvider>
         <Toaster />
       </body>

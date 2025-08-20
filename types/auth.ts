@@ -7,6 +7,7 @@ export interface User {
   role: UserRole;
   createdAt: Date;
   isActive: boolean;
+  isOptimistic?: boolean;
 }
 
 export interface AuthContextType {

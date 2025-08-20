@@ -1,9 +1,10 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Edit, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useCallback, useEffect, useState, useId } from "react";
+import { useState, useId } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import {
@@ -61,55 +62,190 @@ import {
   getAllFunctions,
   updateFunction,
 } from "@/lib/operational-functions";
+import { cn } from "@/lib/utils";
 import type { OperationalFunction } from "@/types/operational-planning";
 
 export default function FunctionsPage() {
   const { hasPermission, logAccess } = usePermissions();
   const router = useRouter();
   const { toast } = useToast();
-  const [functions, setFunctions] = useState<OperationalFunction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingFunction, setEditingFunction] =
     useState<OperationalFunction | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<Omit<OperationalFunction, "id" | "createdAt" | "updatedAt"> & { id?: string }>(() => ({
-    name: editingFunction?.name || "",
-    description: editingFunction?.description || "",
-    category: editingFunction?.category || "apoio",
-    isActive: editingFunction?.isActive ?? true,
-  }));
+  const [formData, setFormData] = useState<
+    Omit<OperationalFunction, "id" | "createdAt" | "updatedAt"> & {
+      id?: string;
+    }
+  >({
+    name: "",
+    description: "",
+    category: "apoio",
+    isActive: true,
+  });
 
-  const canEdit = hasPermission("user.manage"); // Apenas admins podem gerenciar funções
+  const canEdit = hasPermission("user.manage");
   const canCreate = hasPermission("user.manage");
   const canDelete = hasPermission("user.manage");
 
-  const loadFunctions = useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const {
+    data: functions = [],
+    isLoading,
+    isError,
+  } = useQuery<OperationalFunction[]>({
+    queryKey: ["functions"],
+    queryFn: async () => {
       logAccess("LOAD_FUNCTIONS", "/funcoes", true);
-      const functionsData = await getAllFunctions();
-      setFunctions(functionsData.map((f: any) => ({ ...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt) })));
-    } catch (error) {
-      logAccess(
-        "LOAD_FUNCTIONS",
-        "/funcoes",
-        false,
-        "Failed to load functions",
-      );
+      try {
+        const data = await getAllFunctions();
+        return data.map((f: any) => ({
+          ...f,
+          createdAt: new Date(f.createdAt),
+          updatedAt: new Date(f.updatedAt),
+        }));
+      } catch (error) {
+        logAccess(
+          "LOAD_FUNCTIONS",
+          "/funcoes",
+          false,
+          "Failed to load functions",
+        );
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as funções.",
+          variant: "destructive",
+        });
+        throw error; // Re-throw to let React Query handle the error state
+      }
+    },
+  });
+
+  const { mutate: saveFunction, isPending: isSubmitting } = useMutation({
+    mutationFn: async (
+      data: Omit<OperationalFunction, "id" | "createdAt" | "updatedAt">,
+    ) => {
+      const isEditing = !!editingFunction;
+      if (isEditing) {
+        if (!canEdit) throw new Error("Permissão para editar negada.");
+        return updateFunction(editingFunction.id, data);
+      }
+      if (!canCreate) throw new Error("Permissão para criar negada.");
+      return createFunction(data);
+    },
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["functions"] });
+      const previousFunctions =
+        queryClient.getQueryData<OperationalFunction[]>(["functions"]) || [];
+
+      if (editingFunction) {
+        logAccess(
+          "UPDATE_FUNCTION_OPTIMISTIC",
+          `/funcoes/${editingFunction.id}`,
+          true,
+        );
+        queryClient.setQueryData<OperationalFunction[]>(
+          ["functions"],
+          (old = []) =>
+            old.map((func) =>
+              func.id === editingFunction.id ? { ...func, ...newData } : func,
+            ),
+        );
+      } else {
+        logAccess("CREATE_FUNCTION_OPTIMISTIC", `/funcoes`, true);
+        const optimisticFunction: OperationalFunction = {
+          id: `optimistic-${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isOptimistic: true,
+          ...newData,
+        };
+        queryClient.setQueryData<OperationalFunction[]>(
+          ["functions"],
+          (old = []) => [...old, optimisticFunction],
+        );
+      }
+
+      setIsFormModalOpen(false);
+      return { previousFunctions };
+    },
+    onError: (err: Error, newData, context) => {
+      queryClient.setQueryData(["functions"], context?.previousFunctions || []);
+
+      const isEditing = !!editingFunction;
+      const action = isEditing ? "UPDATE_FUNCTION" : "CREATE_FUNCTION";
+      const resource = isEditing ? `/funcoes/${editingFunction?.id}` : "/funcoes";
+      logAccess(action, resource, false, err.message);
+
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar as funções",
+        title: "Erro ao Salvar",
+        description: `A alteração foi revertida. Erro: ${err.message}`,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [logAccess, toast]);
+    },
+    onSuccess: (data, variables) => {
+      const isEditing = !!editingFunction;
+      const action = isEditing ? "UPDATE_FUNCTION" : "CREATE_FUNCTION";
+      const resource = isEditing ? `/funcoes/${editingFunction?.id}` : "/funcoes";
+      logAccess(action, resource, true);
+      toast({
+        title: "Sucesso",
+        description: `Função ${
+          isEditing ? "atualizada" : "criada"
+        } com sucesso.`,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["functions"] });
+    },
+  });
 
-  useEffect(() => {
-    loadFunctions();
-  }, [loadFunctions]);
+  const { mutate: removeFunction } = useMutation({
+    mutationFn: deleteFunction,
+    onMutate: async (functionId: string) => {
+      logAccess("DELETE_FUNCTION_OPTIMISTIC", `/funcoes/${functionId}`, true);
+      await queryClient.cancelQueries({ queryKey: ["functions"] });
+
+      const previousFunctions = queryClient.getQueryData<OperationalFunction[]>([
+        "functions",
+      ]);
+
+      if (previousFunctions) {
+        queryClient.setQueryData(
+          ["functions"],
+          previousFunctions.filter((func) => func.id !== functionId),
+        );
+      }
+
+      return { previousFunctions };
+    },
+    onError: (err: Error, functionId, context) => {
+      if (context?.previousFunctions) {
+        queryClient.setQueryData(["functions"], context.previousFunctions);
+      }
+      logAccess(
+        "DELETE_FUNCTION_ERROR",
+        `/funcoes/${functionId}`,
+        false,
+        err.message,
+      );
+      toast({
+        title: "Exclusão falhou",
+        description: "A alteração foi revertida.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (_, functionId) => {
+      logAccess("DELETE_FUNCTION_SUCCESS", `/funcoes/${functionId}`, true);
+      toast({
+        title: "Sucesso",
+        description: "Função excluída com sucesso.",
+      });
+    },
+    onSettled: (data, error, functionId) => {
+      queryClient.invalidateQueries({ queryKey: ["functions"] });
+    },
+  });
 
   const handleCreateFunction = () => {
     if (!canCreate) return;
@@ -137,65 +273,12 @@ export default function FunctionsPage() {
     setIsFormModalOpen(true);
   };
 
-  const handleSubmitFunction = async (e: React.FormEvent) => {
+  const handleSubmitFunction = (e: React.FormEvent) => {
     e.preventDefault();
-
-    try {
-      setIsSubmitting(true);
-
-      if (editingFunction) {
-        if (!canEdit) {
-          logAccess(
-            "UPDATE_FUNCTION",
-            `/funcoes/${editingFunction.id}`,
-            false,
-            "No edit permission",
-          );
-          return;
-        }
-        await updateFunction(editingFunction.id, formData);
-        logAccess("UPDATE_FUNCTION", `/funcoes/${editingFunction.id}`, true);
-        toast({
-          title: "Sucesso",
-          description: "Função atualizada com sucesso",
-        });
-      } else {
-        if (!canCreate) {
-          logAccess(
-            "CREATE_FUNCTION",
-            "/funcoes",
-            false,
-            "No create permission",
-          );
-          return;
-        }
-        await createFunction(formData);
-        logAccess("CREATE_FUNCTION", "/funcoes", true);
-        toast({
-          title: "Sucesso",
-          description: "Função criada com sucesso",
-        });
-      }
-
-      setIsFormModalOpen(false);
-      loadFunctions();
-    } catch (error) {
-      const action = editingFunction ? "UPDATE_FUNCTION" : "CREATE_FUNCTION";
-      const resource = editingFunction
-        ? `/funcoes/${editingFunction.id}`
-        : "/funcoes";
-      logAccess(action, resource, false, "Failed to save function");
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar a função",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    saveFunction(formData);
   };
 
-  const handleDeleteFunction = async (functionId: string) => {
+  const handleDeleteFunction = (functionId: string) => {
     if (!canDelete) {
       logAccess(
         "DELETE_FUNCTION",
@@ -205,28 +288,7 @@ export default function FunctionsPage() {
       );
       return;
     }
-
-    try {
-      await deleteFunction(functionId);
-      logAccess("DELETE_FUNCTION", `/funcoes/${functionId}`, true);
-      toast({
-        title: "Sucesso",
-        description: "Função excluída com sucesso",
-      });
-      loadFunctions();
-    } catch (error) {
-      logAccess(
-        "DELETE_FUNCTION",
-        `/funcoes/${functionId}`,
-        false,
-        "Failed to delete function",
-      );
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a função",
-        variant: "destructive",
-      });
-    }
+    removeFunction(functionId);
   };
 
   const getCategoryLabel = (category: string) => {
@@ -312,6 +374,10 @@ export default function FunctionsPage() {
                     Carregando funções...
                   </div>
                 </div>
+              ) : isError ? (
+                <div className="flex items-center justify-center py-8 text-red-600">
+                  Ocorreu um erro ao carregar as funções.
+                </div>
               ) : (
                 <div className="rounded-md border">
                   <Table>
@@ -326,7 +392,13 @@ export default function FunctionsPage() {
                     </TableHeader>
                     <TableBody>
                       {functions.map((func) => (
-                        <TableRow key={func.id}>
+                        <TableRow
+                          key={func.id}
+                          className={cn(
+                            "transition-opacity",
+                            func.isOptimistic && "opacity-50",
+                          )}
+                        >
                           <TableCell className="font-medium">
                             {func.name}
                           </TableCell>
@@ -505,4 +577,3 @@ export default function FunctionsPage() {
     </RouteGuard>
   );
 }
-

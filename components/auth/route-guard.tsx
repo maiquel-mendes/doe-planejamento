@@ -22,10 +22,8 @@ export function RouteGuard({
     usePermissions();
   const router = useRouter();
 
-  console.log('RouteGuard Render - user:', user, 'isLoading:', isLoading);
 
   useEffect(() => {
-    console.log('RouteGuard useEffect - user:', user, 'isLoading:', isLoading);
 
     if (isLoading) {
       // Still loading, do nothing yet
@@ -33,7 +31,6 @@ export function RouteGuard({
     }
 
     if (!user) {
-      console.log('RouteGuard: No user and not loading, redirecting to login.');
       router.push(redirectTo);
       return;
     }
@@ -50,7 +47,6 @@ export function RouteGuard({
           false,
           "Insufficient permissions",
         );
-        console.log('RouteGuard: Insufficient permissions, redirecting.');
         router.push(redirectTo);
         return;
       }
@@ -70,12 +66,10 @@ export function RouteGuard({
   ]);
 
   if (isLoading) {
-    console.log('RouteGuard: Returning null while loading.');
     return null; // Show a loading spinner or skeleton while authentication is in progress
   }
 
   if (!user) {
-    console.log('RouteGuard: No user after loading, returning null (should have redirected).');
     return null; // Should have been redirected by useEffect, but as a fallback
   }
 
@@ -85,11 +79,9 @@ export function RouteGuard({
       : hasAnyPermission(requiredPermissions);
 
     if (!hasAccess) {
-      console.log('RouteGuard: No access after loading, returning null.');
       return null;
     }
   }
 
-  console.log('RouteGuard: User has access, rendering children.');
   return <>{children}</>;
 }

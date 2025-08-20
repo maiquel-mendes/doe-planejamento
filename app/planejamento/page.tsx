@@ -1,8 +1,9 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { OperationalPlanningDetailModal } from "@/components/planning/operational-planning-detail-modal";
@@ -18,12 +19,11 @@ import {
 } from "@/components/ui/card";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useToast } from "@/hooks/use-toast";
-import { getAllOperationalPlannings } from "@/lib/operational-planning-management";
 import {
   createOperationalPlanning,
   deleteOperationalPlanning,
+  getAllOperationalPlannings,
   updateOperationalPlanning,
-  parseDates,
 } from "@/lib/operational-planning-management";
 import type { OperationalPlanning } from "@/types/operational-planning";
 
@@ -31,48 +31,157 @@ export default function PlanningPage() {
   const { user, hasPermission, logAccess } = usePermissions();
   const router = useRouter();
   const { toast } = useToast();
-  const [plannings, setPlannings] = useState<OperationalPlanning[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingPlanning, setEditingPlanning] =
     useState<OperationalPlanning | null>(null);
   const [viewingPlanning, setViewingPlanning] =
     useState<OperationalPlanning | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canEdit = hasPermission("planning.edit");
   const canCreate = hasPermission("planning.create");
   const canDelete = hasPermission("planning.delete");
 
-  // Load plannings
-  const loadPlannings = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      logAccess("LOAD_PLANNINGS", "/planejamento", true);
-      const planningsData = await getAllOperationalPlannings();
-      setPlannings(planningsData);
-    } catch (error) {
-      console.error("Failed to load plannings:", error);
-      logAccess(
-        "LOAD_PLANNINGS",
-        "/planejamento",
-        false,
-        "Failed to load plannings",
-      );
+  const { data: plannings = [], isLoading } = useQuery<OperationalPlanning[]>({
+    queryKey: ["plannings"],
+    queryFn: async () => {
+      try {
+        logAccess("LOAD_PLANNINGS", "/planejamento", true);
+        return await getAllOperationalPlannings();
+      } catch (error) {
+        console.error("Failed to load plannings:", error);
+        logAccess("LOAD_PLANNINGS", "/planejamento", false, "Failed to load plannings");
+        toast({ title: "Erro", description: "Não foi possível carregar os planejamentos", variant: "destructive" });
+        return [];
+      }
+    },
+  });
+
+  const { mutate: savePlanning, isPending: isSubmitting } = useMutation({
+    mutationFn: async (data: OperationalPlanning) => {
+      if (!user) throw new Error("Usuário não autenticado.");
+      const isEditing = !!editingPlanning;
+      if (isEditing) {
+        if (!editingPlanning.id) throw new Error("ID do planejamento inválido.");
+        return updateOperationalPlanning(editingPlanning.id, data);
+      }
+      return createOperationalPlanning(data, user.name);
+    },
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["plannings"] });
+      const previousPlannings =
+        queryClient.getQueryData<OperationalPlanning[]>(["plannings"]) || [];
+
+      if (editingPlanning) {
+        logAccess(
+          "UPDATE_PLANNING_OPTIMISTIC",
+          `/planejamento/${editingPlanning.id}`,
+          true,
+        );
+        queryClient.setQueryData<OperationalPlanning[]>(
+          ["plannings"],
+          (old = []) =>
+            old.map((planning) =>
+              planning.id === editingPlanning.id
+                ? { ...planning, ...newData }
+                : planning,
+            ),
+        );
+      } else {
+        logAccess("CREATE_PLANNING_OPTIMISTIC", `/planejamento`, true);
+        const optimisticPlanning: OperationalPlanning = {
+          ...newData,
+          id: `optimistic-${Date.now()}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: user?.id ?? "temp-id",
+          responsibleId: user?.id ?? "temp-id",
+          responsibleName: user?.name ?? "Temp User",
+          status: newData.status || "Elaboração",
+          priority: newData.priority || "Média",
+          isOptimistic: true,
+        };
+        queryClient.setQueryData<OperationalPlanning[]>(
+          ["plannings"],
+          (old = []) => [...old, optimisticPlanning],
+        );
+      }
+
+      setIsFormModalOpen(false);
+      return { previousPlannings };
+    },
+    onError: (err: Error, newData, context) => {
+      queryClient.setQueryData(["plannings"], context?.previousPlannings || []);
+
+      const isEditing = !!editingPlanning;
+      const action = isEditing ? "UPDATE_PLANNING" : "CREATE_PLANNING";
+      const resource = isEditing
+        ? `/planejamento/${editingPlanning?.id}`
+        : "/planejamento";
+      logAccess(action, resource, false, err.message);
+
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os planejamentos",
+        title: "Erro ao Salvar",
+        description: `A alteração foi revertida. Erro: ${err.message}`,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [logAccess, toast]);
+    },
+    onSuccess: (data, variables) => {
+      const isEditing = !!editingPlanning;
+      const action = isEditing ? "UPDATE_PLANNING" : "CREATE_PLANNING";
+      const resource = isEditing
+        ? `/planejamento/${editingPlanning?.id}`
+        : "/planejamento";
+      logAccess(action, resource, true);
+      toast({
+        title: "Sucesso",
+        description: `Planejamento ${isEditing ? "atualizado" : "criado"
+          } com sucesso.`,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["plannings"] });
+    },
+  });
 
-  useEffect(() => {
-    loadPlannings();
-  }, [loadPlannings]);
+  const { mutate: removePlanning } = useMutation({
+    mutationFn: deleteOperationalPlanning,
+    onMutate: async (planningId: string) => {
+      logAccess("DELETE_PLANNING_OPTIMISTIC", `/planejamento/${planningId}`, true);
+      await queryClient.cancelQueries({ queryKey: ["plannings"] });
+      const previousPlannings = queryClient.getQueryData<OperationalPlanning[]>(["plannings"]);
+      if (previousPlannings) {
+        queryClient.setQueryData(
+          ["plannings"],
+          previousPlannings.filter((planning) => planning.id !== planningId),
+        );
+      }
+      return { previousPlannings };
+    },
+    onError: (err: Error, planningId, context) => {
+      if (context?.previousPlannings) {
+        queryClient.setQueryData(["plannings"], context.previousPlannings);
+      }
+      logAccess("DELETE_PLANNING_ERROR", `/planejamento/${planningId}`, false, err.message);
+      toast({
+        title: "Exclusão falhou",
+        description: "A alteração foi revertida.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: (_, planningId) => {
+      logAccess("DELETE_PLANNING_SUCCESS", `/planejamento/${planningId}`, true);
+      toast({
+        title: "Sucesso",
+        description: "Planejamento excluído com sucesso.",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["plannings"] });
+    },
+  });
 
   const handleCreatePlanning = () => {
     if (!canCreate) return;
@@ -94,127 +203,19 @@ export default function PlanningPage() {
     setIsDetailModalOpen(true);
   };
 
-  const handleSubmitPlanning = async (data: OperationalPlanning) => {
-    if (!user) return;
-
-    try {
-      setIsSubmitting(true);
-
-      if (editingPlanning) {
-        // Update existing planning
-        if (!editingPlanning.id) {
-          toast({
-            title: "Erro",
-            description: "ID do planejamento inválido para atualização.",
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
-        }
-        const updatedPlanning = await updateOperationalPlanning(editingPlanning.id, data);
-        logAccess("UPDATE_PLANNING", `/planejamento/${editingPlanning.id}`, true);
-        toast({
-          title: "Sucesso",
-          description: "Planejamento atualizado com sucesso",
-        });
-        setEditingPlanning(parseDates(JSON.parse(JSON.stringify(updatedPlanning)))); // Update editingPlanning with fresh data and new reference
-        if (viewingPlanning && viewingPlanning.id === updatedPlanning.id) {
-          setViewingPlanning(parseDates(JSON.parse(JSON.stringify(updatedPlanning)))); // Also update viewingPlanning if it's the same one
-        }
-      } else {
-        // Create new planning
-        if (!canCreate) {
-          logAccess(
-            "CREATE_PLANNING",
-            "/planejamento",
-            false,
-            "No create permission",
-          );
-          return;
-        }
-        await createOperationalPlanning(data, user.name);
-        logAccess("CREATE_PLANNING", "/planejamento", true);
-        toast({
-          title: "Sucesso",
-          description: "Planejamento criado com sucesso",
-        });
-      }
-
-      setIsFormModalOpen(false);
-      loadPlannings();
-    } catch (error) {
-      console.error("Failed to save planning:", error);
-      const action = editingPlanning ? "UPDATE_PLANNING" : "CREATE_PLANNING";
-      const resource = editingPlanning
-        ? `/planejamento/${editingPlanning.id}`
-        : "/planejamento";
-      logAccess(action, resource, false, "Failed to save planning");
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar o planejamento",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeletePlanning = async (planningId: string) => {
-    if (!canDelete) {
-      logAccess(
-        "DELETE_PLANNING",
-        `/planejamento/${planningId}`,
-        false,
-        "No delete permission",
-      );
-      return;
-    }
-
-    try {
-      await deleteOperationalPlanning(planningId);
-      logAccess("DELETE_PLANNING", `/planejamento/${planningId}`, true);
-      toast({
-        title: "Sucesso",
-        description: "Planejamento excluído com sucesso",
-      });
-      loadPlannings();
-    } catch (error) {
-      console.error("Failed to delete planning:", error);
-      logAccess(
-        "DELETE_PLANNING",
-        `/planejamento/${planningId}`,
-        false,
-        "Failed to delete planning",
-      );
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir o planejamento",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <RouteGuard requiredPermissions={["planning.view"]}>
       <div className="min-h-screen bg-muted/30 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/")}
-              size="sm"
-            >
+            <Button variant="outline" onClick={() => router.push("/")} size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-primary">
-                Planejamento Operacional
-              </h1>
+              <h1 className="text-3xl font-bold text-primary">Planejamento Operacional</h1>
               <p className="text-muted-foreground">
-                {canEdit
-                  ? "Gerencie seus planejamentos operacionais"
-                  : "Visualize os planejamentos operacionais"}
+                {canEdit ? "Gerencie seus planejamentos operacionais" : "Visualize os planejamentos operacionais"}
               </p>
             </div>
           </div>
@@ -243,7 +244,7 @@ export default function PlanningPage() {
                 plannings={plannings}
                 onViewPlanning={handleViewPlanning}
                 onEditPlanning={handleEditPlanning}
-                onDeletePlanning={handleDeletePlanning}
+                onDeletePlanning={removePlanning}
                 canEdit={canEdit}
                 isLoading={isLoading}
               />
@@ -253,7 +254,7 @@ export default function PlanningPage() {
           <OperationalPlanningFormModal
             isOpen={isFormModalOpen}
             onClose={() => setIsFormModalOpen(false)}
-            onSubmit={handleSubmitPlanning}
+            onSubmit={savePlanning}
             planning={editingPlanning}
             isLoading={isSubmitting}
           />
