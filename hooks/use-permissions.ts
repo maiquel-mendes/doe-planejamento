@@ -12,7 +12,7 @@ import type { Permission } from '@/types/permissions';
 import { useCallback } from 'react';
 
 export function usePermissions() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const checkPermission = (permission: Permission): boolean => {
     if (!user) return false;
@@ -45,6 +45,7 @@ export function usePermissions() {
 
   return {
     user,
+    isLoading,
     hasPermission: checkPermission,
     hasAnyPermission: checkAnyPermission,
     hasAllPermissions: checkAllPermissions,

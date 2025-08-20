@@ -33,8 +33,15 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         },
       });
       res.status(200).json(updatedPlanning);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating planning with ID ${id}:`, error);
+      // Log specific Prisma error details if available
+      if (error.code) {
+        console.error(`Prisma Error Code: ${error.code}`);
+      }
+      if (error.meta) {
+        console.error(`Prisma Error Meta:`, error.meta);
+      }
       res.status(500).json({ message: 'Failed to update planning' });
     }
   } else if (req.method === 'DELETE') {

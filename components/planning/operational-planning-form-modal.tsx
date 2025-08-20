@@ -1,8 +1,5 @@
-"use client";
-
-import { Plus, Upload, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Upload } from "lucide-react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,28 +16,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import type {
-  Location,
-  OperationalAssignment,
-  OperationalFunction,
   OperationalPlanning,
-  Route,
-  Target,
-  TimeSchedule,
-  Vehicle,
 } from "@/types/operational-planning";
-import type { User } from "@/types/auth";
+import { useOperationalPlanningForm } from "@/hooks/use-operational-planning-form";
+import { usePlanningSelectData } from "@/hooks/use-planning-select-data";
+import { IntroductionFormSection } from "./form-sections/introduction-form-section";
+import { TargetsFormSection } from "./form-sections/targets-form-section";
+import { FunctionsFormSection } from "./form-sections/functions-form-section";
+import { ScheduleFormSection } from "./form-sections/schedule-form-section";
+import { ComplementaryFormSection } from "./form-sections/complementary-form-section";
 
 interface OperationalPlanningFormModalProps {
   isOpen: boolean;
@@ -50,44 +37,6 @@ interface OperationalPlanningFormModalProps {
   isLoading?: boolean;
 }
 
-// --- Helper: blank objects with all required fields ---
-const blankTarget = (): Target => ({
-  id: "",
-  name: "",
-  alias: "", // Initialize alias to empty string
-  address: "",
-});
-const blankRoute = (): Route => ({
-  id: "",
-  name: "",
-  origin: "",
-  destination: "",
-  distance: "",
-  duration: "",
-});
-const blankLocation = (): Location => ({
-  id: "",
-  name: "",
-  address: "",
-  coordinates: "",
-  type: "alvo",
-});
-
-const blankAssignment = (): OperationalAssignment => ({
-  id: "",
-  operatorId: "",
-  operatorName: "",
-  functionId: "",
-  functionName: "",
-  order: 0,
-});
-
-const blankSchedule = (): TimeSchedule => ({
-  id: "",
-  time: "",
-  activity: "",
-});
-
 export function OperationalPlanningFormModal({
   isOpen,
   onClose,
@@ -95,401 +44,43 @@ export function OperationalPlanningFormModal({
   planning,
   isLoading,
 }: OperationalPlanningFormModalProps) {
-  // --- State ---
-  const [formData, setFormData] = useState<OperationalPlanning>(() => ({
-    introduction: {
-      serviceOrderNumber: "",
-      operationType: "",
-      description: "",
-      supportUnit: "",
-      mandateType: "",
-      operationDate: "",
-      operationTime: "",
-    },
-    targets: [],
-    images: [],
-    id: "",
-    assignments: [],
-    schedule: [],
-    communications: {
-      vehicleCall: "",
-      operatorCall: "",
-      frequency: "",
-    },
-    peculiarities: {
-      searchObjects: [],
-      observations: "",
-      risks: "",
-    },
-    medical: {
-      medic: "",
-      medicId: "",
-      vehicleForTransport: "",
-      hospitalContact: "",
-      procedures: "",
-    },
-    complementaryMeasures: [],
-    routes: [],
-    locations: [],
-    status: "draft",
-    priority: "medium",
-    createdBy: "",
-    responsibleId: "",
-    responsibleName: "",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }));
+  const { users, functions, vehicles, isLoading: isSelectDataLoading } = usePlanningSelectData();
+  const { toast } = useToast();
 
-  // --- Temporary states ---
-  const [newTarget, setNewTarget] = useState<Target>(blankTarget());
-  const [newRoute, setNewRoute] = useState<Route>(blankRoute());
-  const [newLocation, setNewLocation] = useState<Location>(blankLocation());
-  const [newAssignment, setNewAssignment] = useState<OperationalAssignment>(
-    blankAssignment(),
-  );
-  const [newScheduleItem, setNewScheduleItem] = useState<TimeSchedule>(
-    blankSchedule(),
-  );
-  const [newMeasure, setNewMeasure] = useState("");
-  const [newSearchObject, setNewSearchObject] = useState("");
-
-  // --- Data for Selects ---
-  const [users, setUsers] = useState<User[]>([]);
-  const [functions, setFunctions] = useState<OperationalFunction[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, functionsRes, vehiclesRes] = await Promise.all([
-          fetch("/api/users"),
-          fetch("/api/functions"),
-          fetch("/api/vehicles"),
-        ]);
-
-        const usersData = await usersRes.json();
-        const functionsData = await functionsRes.json();
-        const vehiclesData = await vehiclesRes.json();
-
-        setUsers(usersData.map((u: User) => ({ ...u, createdAt: new Date(u.createdAt) })));
-        setFunctions(functionsData.map((f: OperationalFunction) => ({ ...f, createdAt: new Date(f.createdAt), updatedAt: new Date(f.updatedAt) })));
-        setVehicles(vehiclesData.map((v: Vehicle) => ({ ...v, createdAt: new Date(v.createdAt), updatedAt: new Date(v.updatedAt) })));
-      } catch (error) {
-        console.error("Failed to fetch select data:", error);
-      }
-    };
-    fetchData();
-  }, []);
-
-
-
-  // --- Effect: load planning ---
-  useEffect(() => {
-    if (planning) {
-      setFormData({
-        id: planning.id,
-        introduction: {
-          serviceOrderNumber: planning.introduction.serviceOrderNumber,
-          operationType: planning.introduction.operationType,
-          description: planning.introduction.description,
-          supportUnit: planning.introduction.supportUnit,
-          mandateType: planning.introduction.mandateType,
-          operationDate: planning.introduction.operationDate,
-          operationTime: planning.introduction.operationTime,
-        },
-        targets: planning.targets || [],
-        assignments: planning.assignments || [],
-        images: planning.images || [],
-
-        schedule: planning.schedule || [],
-        communications: {
-          vehicleCall: planning.communications.vehicleCall,
-          operatorCall: planning.communications.operatorCall,
-          frequency: planning.communications.frequency,
-        },
-        peculiarities: {
-          searchObjects: planning.peculiarities.searchObjects || [],
-          observations: planning.peculiarities.observations,
-          risks: planning.peculiarities.risks,
-        },
-        medical: {
-          medic: planning.medical.medic,
-          medicId: planning.medical.medicId,
-          vehicleForTransport: planning.medical.vehicleForTransport,
-          hospitalContact: planning.medical.hospitalContact,
-          procedures: planning.medical.procedures || "",
-        },
-        complementaryMeasures: planning.complementaryMeasures || [],
-        routes: planning.routes || [],
-        locations: planning.locations || [],
-        status: planning.status || "draft",
-        priority: planning.priority || "medium",
-        createdBy: planning.createdBy || "",
-        responsibleId: planning.responsibleId || "",
-        responsibleName: planning.responsibleName || "",
-        createdAt: planning.createdAt || new Date(),
-        updatedAt: planning.updatedAt || new Date(),
-      });
-    } else {
-      setFormData({
-        introduction: {
-          serviceOrderNumber: "",
-          operationType: "",
-          description: "",
-          supportUnit: "",
-          mandateType: "",
-          operationDate: "",
-          operationTime: "",
-        },
-        targets: [],
-        images: [],
-        id: "",
-        assignments: [],
-        schedule: [],
-        communications: {
-          vehicleCall: "",
-          operatorCall: "",
-          frequency: "",
-        },
-        peculiarities: {
-          searchObjects: [],
-          observations: "",
-          risks: "",
-        },
-        medical: {
-          medic: "",
-          medicId: "",
-          vehicleForTransport: "",
-          hospitalContact: "",
-          procedures: "",
-        },
-        complementaryMeasures: [],
-        routes: [],
-        locations: [],
-        status: "draft",
-        priority: "medium",
-        createdBy: "",
-        responsibleId: "",
-        responsibleName: "",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-    setNewTarget(blankTarget());
-    setNewRoute(blankRoute());
-    setNewLocation(blankLocation());
-    setNewAssignment(blankAssignment());
-    setNewScheduleItem(blankSchedule());
-    setNewMeasure("");
-    setNewSearchObject("");
-    // eslint-disable-next-line
-  }, [planning]);
-
-  // --- Handlers ---
-  // Targets
-  const addTarget = () => {
-    if (newTarget.name.trim() && newTarget.address.trim()) {
-      setFormData({
-        ...formData,
-        targets: [
-          ...formData.targets,
-          { ...newTarget, id: Date.now().toString() },
-        ],
-      });
-      setNewTarget(blankTarget());
-    }
-  };
-  const removeTarget = (id: string) => {
-    setFormData({
-      ...formData,
-      targets: formData.targets.filter((t) => t.id !== id),
-    });
-  };
-
-  // Assignments
-  const addAssignment = () => {
-    if (newAssignment.operatorId && newAssignment.functionId) {
-      const selectedOperator = users.find(u => u.id === newAssignment.operatorId);
-      const selectedFunction = functions.find(f => f.id === newAssignment.functionId);
-      const selectedVehicle = vehicles.find(v => v.id === newAssignment.vehicleId);
-
-      setFormData({
-        ...formData,
-        assignments: [
-          ...formData.assignments,
-          {
-            ...newAssignment,
-            id: Date.now().toString(),
-            order: formData.assignments.length + 1,
-            operatorName: selectedOperator?.name || "",
-            functionName: selectedFunction?.name || "",
-            vehiclePrefix: selectedVehicle?.prefix || "",
-          },
-        ],
-      });
-      setNewAssignment(blankAssignment());
-    }
-  };
-  const removeAssignment = (id: string) => {
-    setFormData({
-      ...formData,
-      assignments: formData.assignments.filter((a) => a.id !== id),
-    });
-  };
-
-  const updateFunctionAssignment = (
-    index: number,
-    field: string,
-    value: string,
-  ) => {
-    const updated = [...formData.assignments];
-    updated[index] = { ...updated[index], [field]: value };
-
-    // Update operatorName/functionName/vehiclePrefix when ID changes
-    if (field === "operatorId") {
-      const selectedOperator = users.find(u => u.id === value);
-      updated[index].operatorName = selectedOperator?.name || "";
-    } else if (field === "functionId") {
-      const selectedFunction = functions.find(f => f.id === value);
-      updated[index].functionName = selectedFunction?.name || "";
-    } else if (field === "vehicleId") {
-      const selectedVehicle = vehicles.find(v => v.id === value);
-      updated[index].vehiclePrefix = selectedVehicle?.prefix || "";
-    }
-
-    setFormData({
-      ...formData,
-      assignments: updated,
-    });
-  };
-
-  // Routes
-  const addRoute = () => {
-    if (newRoute.origin.trim() && newRoute.destination.trim()) {
-      setFormData({
-        ...formData,
-        routes: [
-          ...formData.routes,
-          { ...newRoute, id: Date.now().toString() },
-        ],
-      });
-      setNewRoute(blankRoute());
-    }
-  };
-  const removeRoute = (id: string) => {
-    setFormData({
-      ...formData,
-      routes: formData.routes.filter((r) => r.id !== id),
-    });
-  };
-
-  // Locations
-  const addLocation = () => {
-    if (
-      newLocation.name.trim() &&
-      newLocation.address.trim() &&
-      newLocation.type
-    ) {
-      setFormData({
-        ...formData,
-        locations: [
-          ...formData.locations,
-          { ...newLocation, id: Date.now().toString() },
-        ],
-      });
-      setNewLocation(blankLocation());
-    }
-  };
-  const removeLocation = (id: string) => {
-    setFormData({
-      ...formData,
-      locations: formData.locations.filter((l) => l.id !== id),
-    });
-  };
-
-  // Schedule
-  const addSchedule = () => {
-    if (newScheduleItem.time.trim() && newScheduleItem.activity.trim()) {
-      setFormData({
-        ...formData,
-        schedule: [
-          ...formData.schedule,
-          { ...newScheduleItem, id: Date.now().toString() },
-        ],
-      });
-      setNewScheduleItem(blankSchedule());
-    }
-  };
-  const removeSchedule = (id: string) => {
-    setFormData({
-      ...formData,
-      schedule: formData.schedule.filter((s) => s.id !== id),
-    });
-  };
-
-  // Complementary Measures
-  const addMeasure = () => {
-    if (newMeasure.trim()) {
-      setFormData({
-        ...formData,
-        complementaryMeasures: [
-          ...formData.complementaryMeasures,
-          newMeasure.trim(),
-        ],
-      });
-      setNewMeasure("");
-    }
-  };
-  const removeMeasure = (index: number) => {
-    setFormData({
-      ...formData,
-      complementaryMeasures: formData.complementaryMeasures.filter(
-        (_, i) => i !== index,
-      ),
-    });
-  };
-
-  // Search Objects
-  const addSearchObject = () => {
-    if (newSearchObject.trim()) {
-      setFormData({
-        ...formData,
-        peculiarities: {
-          ...formData.peculiarities,
-          searchObjects: [
-            ...formData.peculiarities.searchObjects,
-            newSearchObject.trim(),
-          ],
-        },
-      });
-      setNewSearchObject("");
-    }
-  };
-  const removeSearchObject = (index: number) => {
-    setFormData({
-      ...formData,
-      peculiarities: {
-        ...formData.peculiarities,
-        searchObjects: formData.peculiarities.searchObjects.filter(
-          (_, i) => i !== index,
-        ),
-      },
-    });
-  };
-
-  // Medical
-  const handleMedicalChange = (
-    field: keyof OperationalPlanning["medical"],
-    value: string,
-  ) => {
-    setFormData({
-      ...formData,
-      medical: {
-        ...formData.medical,
-        [field]: value,
-      },
-    });
-  };
+  const {
+    formData,
+    setFormData,
+    newTarget,
+    setNewTarget,
+    newRoute,
+    setNewRoute,
+    newLocation,
+    setNewLocation,
+    newAssignment,
+    setNewAssignment,
+    newScheduleItem,
+    setNewScheduleItem,
+    newMeasure,
+    setNewMeasure,
+    newSearchObject,
+    setNewSearchObject,
+    addTarget,
+    removeTarget,
+    addAssignment,
+    removeAssignment,
+    updateFunctionAssignment,
+    addRoute,
+    removeRoute,
+    addLocation,
+    removeLocation,
+    addSchedule,
+    removeSchedule,
+    addMeasure,
+    removeMeasure,
+    addSearchObject,
+    removeSearchObject,
+    handleMedicalChange,
+  } = useOperationalPlanningForm({ planning, users, functions, vehicles });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -498,7 +89,6 @@ export function OperationalPlanningFormModal({
 
   const isEditing = !!planning;
 
-  // --- UI ---
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
@@ -528,992 +118,94 @@ export function OperationalPlanningFormModal({
             <div className="mt-4">
               {/* Aba Introdução */}
               <TabsContent value="introducao" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>1. Introdução</CardTitle>
-                    <CardDescription>
-                      Informações básicas da operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>Ordem de Serviço</Label>
-                        <Input
-                          value={formData.introduction.serviceOrderNumber}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                serviceOrderNumber: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Ex: 013/2025 – DOE"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Tipo de Operação</Label>
-                        <Input
-                          value={formData.introduction.operationType}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                operationType: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Ex: Busca e Apreensão"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>Unidade de Apoio</Label>
-                        <Input
-                          value={formData.introduction.supportUnit}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                supportUnit: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Ex: P11, DOE"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Tipo de Mandado</Label>
-                        <Select
-                          value={formData.introduction.mandateType}
-                          onValueChange={(value) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                mandateType: value,
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="busca-apreensao">
-                              Busca e Apreensão
-                            </SelectItem>
-                            <SelectItem value="mandado-prisao">
-                              Mandado de Prisão
-                            </SelectItem>
-                            <SelectItem value="busca-prisao">
-                              Busca e Apreensão + Mandado de Prisão
-                            </SelectItem>
-                            <SelectItem value="outros">Outros</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>Data da Operação</Label>
-                        <Input
-                          type="date"
-                          value={formData.introduction.operationDate}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                operationDate: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Horário da Operação</Label>
-                        <Input
-                          type="time"
-                          value={formData.introduction.operationTime}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              introduction: {
-                                ...formData.introduction,
-                                operationTime: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Descrição</Label>
-                      <Textarea
-                        value={formData.introduction.description}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            introduction: {
-                              ...formData.introduction,
-                              description: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Descrição da introdução"
-                        rows={3}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                <IntroductionFormSection
+                  introduction={formData.introduction}
+                  onFieldChange={(field, value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      introduction: { ...prev.introduction, [field]: value },
+                    }))
+                  }
+                />
               </TabsContent>
 
               {/* Aba Alvos */}
               <TabsContent value="alvos" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>2. Alvos da Operação</CardTitle>
-                    <CardDescription>
-                      Adicione e gerencie os alvos envolvidos na operação.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.targets.map((target) => (
-                        <div
-                          key={target.id}
-                          className="flex items-center gap-2 p-3 border rounded"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">{target.name}</div>
-                            {target.alias && (
-                              <div className="text-sm text-muted-foreground">
-                                ({target.alias})
-                              </div>
-                            )}
-                            {target.address && (
-                              <div className="text-sm text-muted-foreground">
-                                {target.address}
-                              </div>
-                            )}
-                            {target.description && (
-                              <div className="text-sm text-muted-foreground">
-                                {target.description}
-                              </div>
-                            )}
-                            {target.observations && (
-                              <div className="text-sm text-muted-foreground">
-                                Obs: {target.observations}
-                              </div>
-                            )}
-                            {target.coordinates && (
-                              <div className="text-sm text-muted-foreground">
-                                Coord: {target.coordinates}
-                              </div>
-                            )}
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeTarget(target.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                <TargetsFormSection
+                  targets={formData.targets}
+                  newTarget={newTarget}
+                  setNewTarget={setNewTarget}
+                  addTarget={addTarget}
+                  removeTarget={removeTarget}
+                />
 
-                    <div className="grid gap-2">
-                      <Label>Nome do Alvo</Label>
-                      <Input
-                        value={newTarget.name}
-                        onChange={(e) =>
-                          setNewTarget({ ...newTarget, name: e.target.value })
-                        }
-                        placeholder="Nome completo do alvo"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Apelido (opcional)</Label>
-                      <Input
-                        value={newTarget.alias}
-                        onChange={(e) =>
-                          setNewTarget({ ...newTarget, alias: e.target.value })
-                        }
-                        placeholder="Apelido ou nome conhecido"
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Endereço</Label>
-                      <Input
-                        value={newTarget.address}
-                        onChange={(e) =>
-                          setNewTarget({ ...newTarget, address: e.target.value })
-                        }
-                        placeholder="Endereço completo do alvo"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="grid gap-2">
-                        <Label>Coordenadas GPS (opcional)</Label>
-                        <Input
-                          value={newTarget.coordinates}
-                          onChange={(e) =>
-                            setNewTarget({
-                              ...newTarget,
-                              coordinates: e.target.value,
-                            })
-                          }
-                          placeholder="Ex: -15.7801, -47.9292"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Descrição / Observações (opcional)</Label>
-                        <Input
-                          value={newTarget.description}
-                          onChange={(e) =>
-                            setNewTarget({
-                              ...newTarget,
-                              description: e.target.value,
-                            })
-                          }
-                          placeholder="Detalhes adicionais sobre o alvo"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Observações Gerais (opcional)</Label>
-                      <Textarea
-                        value={newTarget.observations}
-                        onChange={(e) =>
-                          setNewTarget({
-                            ...newTarget,
-                            observations: e.target.value,
-                          })
-                        }
-                        placeholder="Observações gerais sobre o alvo"
-                        rows={2}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addTarget}
-                      className="w-full bg-transparent"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Alvo
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>3. Imagens</CardTitle>
-                    <CardDescription>
-                      Anexar imagens relevantes à operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                      <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Clique para adicionar imagens ou arraste e solte aqui
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PNG, JPG até 10MB
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               {/* Aba Funções */}
               <TabsContent value="funcoes" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>5. Quadro de Funções</CardTitle>
-                    <CardDescription>
-                      Distribuição de operadores, funções e viaturas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.assignments.map((assignment, index) => (
-                        <div
-                          key={assignment.id}
-                          className="grid grid-cols-4 gap-2 p-3 border rounded"
-                        >
-                          <Select
-                            value={assignment.operatorId || ""}
-                            onValueChange={(value) =>
-                              updateFunctionAssignment(
-                                index,
-                                "operatorId",
-                                value,
-                              )
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Operador" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users.map((user: User) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  {user.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          <Select
-                            value={assignment.functionId || ""}
-                            onValueChange={(value) =>
-                              updateFunctionAssignment(
-                                index,
-                                "functionId",
-                                value,
-                              )
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Função" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {functions.map((func: OperationalFunction) => (
-                                <SelectItem key={func.id} value={func.id}>
-                                  {func.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          <Select
-                            value={assignment.vehicleId || ""}
-                            onValueChange={(value) =>
-                              updateFunctionAssignment(
-                                index,
-                                "vehicleId",
-                                value,
-                              )
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Viatura" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vehicles.map((vehicle: Vehicle) => (
-                                <SelectItem key={vehicle.id} value={vehicle.id}>
-                                  {vehicle.prefix} - {vehicle.model}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAssignment(assignment.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-4 gap-2 p-3 border rounded">
-                        <Select
-                          value={newAssignment.operatorId}
-                          onValueChange={(value) =>
-                            setNewAssignment({ ...newAssignment, operatorId: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Operador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {users.map((user: User) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <Select
-                          value={newAssignment.functionId}
-                          onValueChange={(value) =>
-                            setNewAssignment({ ...newAssignment, functionId: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Função" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {functions.map((func: OperationalFunction) => (
-                              <SelectItem key={func.id} value={func.id}>
-                                {func.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <Select
-                          value={newAssignment.vehicleId || ""}
-                          onValueChange={(value) =>
-                            setNewAssignment({ ...newAssignment, vehicleId: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Viatura" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {vehicles.map((vehicle: Vehicle) => (
-                              <SelectItem key={vehicle.id} value={vehicle.id}>
-                                {vehicle.prefix} - {vehicle.model}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={addAssignment}
-                          className="col-span-4"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Adicionar Função
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <FunctionsFormSection
+                  assignments={formData.assignments}
+                  newAssignment={newAssignment}
+                  setNewAssignment={setNewAssignment}
+                  addAssignment={addAssignment}
+                  removeAssignment={removeAssignment}
+                  updateFunctionAssignment={updateFunctionAssignment}
+                  users={users}
+                  functions={functions}
+                  vehicles={vehicles}
+                  showToast={toast}
+                />
               </TabsContent>
 
               {/* Aba Horários */}
               <TabsContent value="horarios" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>6. Quadro de Horários</CardTitle>
-                    <CardDescription>
-                      Cronograma detalhado da operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.schedule.map((item, _index) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center gap-2 p-3 border rounded"
-                        >
-                          <div className="font-mono text-sm font-medium min-w-[80px]">
-                            {item.time}
-                          </div>
-                          <div className="flex-1">{item.activity}</div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeSchedule(item.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          type="time"
-                          value={newScheduleItem.time}
-                          onChange={(e) =>
-                            setNewScheduleItem({
-                              ...newScheduleItem,
-                              time: e.target.value,
-                            })
-                          }
-                          placeholder="Horário"
-                        />
-                        <Input
-                          value={newScheduleItem.activity}
-                          onChange={(e) =>
-                            setNewScheduleItem({
-                              ...newScheduleItem,
-                              activity: e.target.value,
-                            })
-                          }
-                          placeholder="Atividade"
-                          className="col-span-2"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addSchedule}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Horário
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>7. Comunicações Durante Trajeto</CardTitle>
-                    <CardDescription>
-                      Configurações de comunicação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4">
-                      <div className="grid gap-2">
-                        <Label>Chamada das Viaturas</Label>
-                        <Input
-                          value={formData.communications.vehicleCall}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              communications: {
-                                ...formData.communications,
-                                vehicleCall: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Ex: OPERAÇÃO 03"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Chamada dos Operadores</Label>
-                        <Input
-                          value={formData.communications.operatorCall}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              communications: {
-                                ...formData.communications,
-                                operatorCall: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Ex: DMO: DOA / DOE"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Frequência</Label>
-                        <Input
-                          value={formData.communications.frequency}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              communications: {
-                                ...formData.communications,
-                                frequency: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="Frequência de comunicação"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ScheduleFormSection
+                  schedule={formData.schedule}
+                  newScheduleItem={newScheduleItem}
+                  setNewScheduleItem={setNewScheduleItem}
+                  addSchedule={addSchedule}
+                  removeSchedule={removeSchedule}
+                  communications={formData.communications}
+                  onCommunicationsChange={(field, value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      communications: { ...prev.communications, [field]: value },
+                    }))
+                  }
+                />
               </TabsContent>
 
               {/* Aba Complementares */}
               <TabsContent value="complementares" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>8. Peculiaridades</CardTitle>
-                    <CardDescription>
-                      Informações específicas da operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Objetos da Busca</Label>
-                      <div className="space-y-2">
-                        {formData.peculiarities.searchObjects.map(
-                          (object, index) => (
-                            <div
-                              key={object}
-                              className="flex items-center gap-2"
-                            >
-                              <Badge
-                                variant="outline"
-                                className="flex-1 justify-start"
-                              >
-                                {object}
-                              </Badge>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeSearchObject(index)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ),
-                        )}
-                        <div className="flex gap-2">
-                          <Input
-                            value={newSearchObject}
-                            onChange={(e) => setNewSearchObject(e.target.value)}
-                            placeholder="Adicionar objeto de busca"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={addSearchObject}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Observações</Label>
-                      <Textarea
-                        value={formData.peculiarities.observations}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            peculiarities: {
-                              ...formData.peculiarities,
-                              observations: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Observações gerais sobre a operação"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Riscos Identificados</Label>
-                      <Textarea
-                        value={formData.peculiarities.risks}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            peculiarities: {
-                              ...formData.peculiarities,
-                              risks: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Riscos e precauções necessárias"
-                        rows={3}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>9. APH – Médico</CardTitle>
-                    <CardDescription>
-                      Atendimento pré-hospitalar e suporte médico
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label>Socorristas</Label>
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <Input
-                            value={formData.medical.medic}
-                            onChange={(e) =>
-                              handleMedicalChange("medic", e.target.value)
-                            }
-                            placeholder="Nome do socorrista"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label>Equipamentos / Procedimentos</Label>
-                      <Textarea
-                        value={formData.medical.procedures}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            medical: {
-                              ...formData.medical,
-                              procedures: e.target.value,
-                            },
-                          })
-                        }
-                        placeholder="Procedimentos de atendimento"
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>Hospital de Referência</Label>
-                        <Input
-                          value={
-                            formData.locations.find(
-                              (l) => l.type === "hospital",
-                            )?.name || ""
-                          }
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              locations: formData.locations.map((l) =>
-                                l.type === "hospital"
-                                  ? { ...l, name: e.target.value }
-                                  : l,
-                              ),
-                            })
-                          }
-                          placeholder="Nome do hospital"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Telefone do Hospital</Label>
-                        <Input
-                          value={formData.medical.hospitalContact}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              medical: {
-                                ...formData.medical,
-                                hospitalContact: e.target.value,
-                              },
-                            })
-                          }
-                          placeholder="(61) 3550-8900"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>10. Medidas Complementares</CardTitle>
-                    <CardDescription>
-                      Ações adicionais necessárias
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.complementaryMeasures.map((measure, index) => (
-                        <div key={measure} className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className="flex-1 justify-start"
-                          >
-                            {measure}
-                          </Badge>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeMeasure(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="flex gap-2">
-                        <Input
-                          value={newMeasure}
-                          onChange={(e) => setNewMeasure(e.target.value)}
-                          placeholder="Adicionar medida complementar"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={addMeasure}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>11. Resumo das Rotas</CardTitle>
-                    <CardDescription>
-                      Rotas e trajetos da operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.routes.map((route, _index) => (
-                        <div
-                          key={route.id}
-                          className="flex items-center gap-2 p-3 border rounded"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">
-                              {route.origin} → {route.destination}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {route.distance && `Distância: ${route.distance}`}
-                              {route.duration && ` • Tempo: ${route.duration}`}
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeRoute(route.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          value={newRoute.origin}
-                          onChange={(e) =>
-                            setNewRoute({ ...newRoute, origin: e.target.value })
-                          }
-                          placeholder="Origem"
-                        />
-                        <Input
-                          value={newRoute.destination}
-                          onChange={(e) =>
-                            setNewRoute({
-                              ...newRoute,
-                              destination: e.target.value,
-                            })
-                          }
-                          placeholder="Destino"
-                        />
-                        <Input
-                          value={newRoute.distance}
-                          onChange={(e) =>
-                            setNewRoute({
-                              ...newRoute,
-                              distance: e.target.value,
-                            })
-                          }
-                          placeholder="Distância"
-                        />
-                        <Input
-                          value={newRoute.duration}
-                          onChange={(e) =>
-                            setNewRoute({
-                              ...newRoute,
-                              duration: e.target.value,
-                            })
-                          }
-                          placeholder="Tempo estimado"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addRoute}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Rota
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>12. Resumo das Localizações</CardTitle>
-                    <CardDescription>
-                      Pontos importantes da operação
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      {formData.locations.map((location) => (
-                        <div
-                          key={location.id}
-                          className="flex items-center gap-2 p-3 border rounded"
-                        >
-                          <div className="flex-1">
-                            <div className="font-medium">{location.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {location.coordinates &&
-                                `Coordenadas: ${location.coordinates}`}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {location.address &&
-                                `Referência: ${location.address}`}
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeLocation(location.id)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                      <div className="grid gap-2">
-                        <Input
-                          value={newLocation.name}
-                          onChange={(e) =>
-                            setNewLocation({
-                              ...newLocation,
-                              name: e.target.value,
-                            })
-                          }
-                          placeholder="Nome da localização"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            value={newLocation.coordinates}
-                            onChange={(e) =>
-                              setNewLocation({
-                                ...newLocation,
-                                coordinates: e.target.value,
-                              })
-                            }
-                            placeholder="Coordenadas GPS"
-                          />
-                          <Input
-                            value={newLocation.address}
-                            onChange={(e) =>
-                              setNewLocation({
-                                ...newLocation,
-                                address: e.target.value,
-                              })
-                            }
-                            placeholder="Ponto de referência"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addLocation}
-                        className="w-full bg-transparent"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Adicionar Localização
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ComplementaryFormSection
+                  peculiarities={formData.peculiarities}
+                  newSearchObject={newSearchObject}
+                  setNewSearchObject={setNewSearchObject}
+                  addSearchObject={addSearchObject}
+                  removeSearchObject={removeSearchObject}
+                  medical={formData.medical}
+                  handleMedicalChange={(field, value) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      medical: { ...prev.medical, [field]: value },
+                    }))
+                  }
+                  complementaryMeasures={formData.complementaryMeasures}
+                  newMeasure={newMeasure}
+                  setNewMeasure={setNewMeasure}
+                  addMeasure={addMeasure}
+                  removeMeasure={removeMeasure}
+                  routes={formData.routes}
+                  newRoute={newRoute}
+                  setNewRoute={setNewRoute}
+                  addRoute={addRoute}
+                  removeRoute={removeRoute}
+                  locations={formData.locations}
+                  newLocation={newLocation}
+                  setNewLocation={setNewLocation}
+                  addLocation={addLocation}
+                  removeLocation={removeLocation}
+                />
               </TabsContent>
             </div>
           </Tabs>
@@ -1522,8 +214,8 @@ export function OperationalPlanningFormModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : isEditing ? "Salvar" : "Criar"}
+            <Button type="submit" disabled={isLoading || isSelectDataLoading}>
+              {isLoading || isSelectDataLoading ? "Salvando..." : isEditing ? "Salvar" : "Criar"}
             </Button>
           </DialogFooter>
         </form>

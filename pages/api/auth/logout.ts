@@ -14,7 +14,7 @@ export default async function handler(
 
   res.setHeader(
     'Set-Cookie',
-    `token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; ${domain ? `Domain=${domain};` : ''} Secure=${isProduction}`,
+    `token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax; Secure=${isProduction}`,
   );
   res.status(200).json({ message: 'Logged out successfully' });
 }

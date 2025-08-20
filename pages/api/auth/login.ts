@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.setHeader(
       'Set-Cookie',
-      `token=${token}; HttpOnly; Path=/; Max-Age=${60 * 60}; SameSite=Lax; ${domain ? `Domain=${domain};` : ''} Secure=${isProduction}`,
+      `token=${token}; HttpOnly; Path=/; Max-Age=${60 * 60}; SameSite=Lax; Secure=${isProduction}`,
     );
     res.status(200).json({ message: 'Login successful' });
   } catch (error) {

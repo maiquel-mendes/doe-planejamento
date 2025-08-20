@@ -51,7 +51,8 @@ async function main() {
     update: {},
     create: {
       name: 'Coordenador/Motorista',
-      description: 'Responsável pela coordenação da operação e condução da viatura',
+      description:
+        'Responsável pela coordenação da operação e condução da viatura',
       category: 'comando',
       isActive: true,
     },
@@ -129,7 +130,6 @@ async function main() {
       communications: {
         vehicleCall: 'PATRULHA 01',
         operatorCall: 'ALPHA',
-        frequency: '145.000 MHz',
       },
       peculiarities: {
         searchObjects: [],

@@ -25,8 +25,7 @@ export interface OperationalAssignment {
   id: string;
   operatorId: string;
   operatorName: string;
-  functionId: string;
-  functionName: string;
+  assignedFunctions: { id: string; name: string; category: OperationalFunction['category']; }[];
   vehicleId?: string;
   vehiclePrefix?: string;
   order: number;
@@ -91,7 +90,6 @@ export interface OperationalPlanning {
   communications: {
     vehicleCall: string;
     operatorCall: string;
-    frequency?: string;
   };
 
   peculiarities: {

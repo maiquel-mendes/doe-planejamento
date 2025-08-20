@@ -30,15 +30,22 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getOperationalPlanningById } from '@/lib/operational-planning-management';
+import { getUserById } from '@/lib/user-management';
 import type { OperationalPlanning } from '@/types/operational-planning';
 
 export default function OperationalPlanningDetailPage() {
   const params = useParams();
+
+  if (!params || !params.id) {
+    notFound();
+  }
+
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [planning, setPlanning] = useState<OperationalPlanning | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [creatorName, setCreatorName] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +67,23 @@ export default function OperationalPlanningDetailPage() {
 
     fetchPlanning();
   }, [id]);
+
+  useEffect(() => {
+    if (planning?.createdBy) {
+      const fetchCreator = async () => {
+        try {
+          const user = await getUserById(planning.createdBy);
+          setCreatorName(user?.name || "Desconhecido");
+        } catch (error) {
+          console.error("Failed to fetch creator name:", error);
+          setCreatorName("Erro ao carregar");
+        }
+      };
+      fetchCreator();
+    } else {
+      setCreatorName("");
+    }
+  }, [planning?.createdBy]);
 
   const handleGeneratePdf = async () => {
     if (!planning) return;
@@ -237,26 +261,24 @@ export default function OperationalPlanningDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {planning.assignments.map((func) => (
+                  {planning.assignments.map((assignment) => (
                     <div
-                      key={func.id}
+                      key={assignment.id}
                       className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                     >
                       <div className="flex items-center gap-4">
                         <div>
-                          <p className="font-medium">{func.operatorName}</p>
+                          <p className="font-medium">{assignment.operatorName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {func.functionName}
+                            {assignment.assignedFunctions.map(f => f.name).join(", ")}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <Badge variant="outline">{func.vehiclePrefix}</Badge>
-                        {func.functionId && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {func.order}
-                          </p>
-                        )}
+                        <Badge variant="outline">{assignment.vehiclePrefix}</Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ordem: {assignment.order}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -303,9 +325,7 @@ export default function OperationalPlanningDetailPage() {
                 <div className="space-y-3">
                   {
                     <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="font-medium">
-                        {planning.communications.frequency}
-                      </p>
+                      <p className="font-medium">Canal de Comunicação</p>
                       <p className="text-sm text-muted-foreground">
                         {planning.communications.vehicleCall}
                       </p>
@@ -433,7 +453,7 @@ export default function OperationalPlanningDetailPage() {
         {/* Metadata */}
         <div className="pt-4 border-t space-y-2 mt-6">
           <div className="text-xs text-muted-foreground">
-            Criado por {planning.createdBy} em
+            Criado por {creatorName} em
             {planning.createdAt.toLocaleDateString('pt-BR')}
           </div>
           <div className="text-xs text-muted-foreground">

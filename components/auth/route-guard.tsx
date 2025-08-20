@@ -15,16 +15,26 @@ interface RouteGuardProps {
 export function RouteGuard({
   children,
   requiredPermissions = [],
-  redirectTo = "/",
+  redirectTo = "/login",
   requireAll = false,
 }: RouteGuardProps) {
-  const { user, hasAnyPermission, hasAllPermissions, logAccess } =
+  const { user, isLoading, hasAnyPermission, hasAllPermissions, logAccess } =
     usePermissions();
   const router = useRouter();
 
+  console.log('RouteGuard Render - user:', user, 'isLoading:', isLoading);
+
   useEffect(() => {
+    console.log('RouteGuard useEffect - user:', user, 'isLoading:', isLoading);
+
+    if (isLoading) {
+      // Still loading, do nothing yet
+      return;
+    }
+
     if (!user) {
-      router.push("/login");
+      console.log('RouteGuard: No user and not loading, redirecting to login.');
+      router.push(redirectTo);
       return;
     }
 
@@ -40,6 +50,7 @@ export function RouteGuard({
           false,
           "Insufficient permissions",
         );
+        console.log('RouteGuard: Insufficient permissions, redirecting.');
         router.push(redirectTo);
         return;
       }
@@ -48,6 +59,7 @@ export function RouteGuard({
     logAccess("PAGE_ACCESS", window.location.pathname, true);
   }, [
     user,
+    isLoading,
     requiredPermissions,
     requireAll,
     redirectTo,
@@ -57,8 +69,14 @@ export function RouteGuard({
     logAccess,
   ]);
 
+  if (isLoading) {
+    console.log('RouteGuard: Returning null while loading.');
+    return null; // Show a loading spinner or skeleton while authentication is in progress
+  }
+
   if (!user) {
-    return null;
+    console.log('RouteGuard: No user after loading, returning null (should have redirected).');
+    return null; // Should have been redirected by useEffect, but as a fallback
   }
 
   if (requiredPermissions.length > 0) {
@@ -67,9 +85,11 @@ export function RouteGuard({
       : hasAnyPermission(requiredPermissions);
 
     if (!hasAccess) {
+      console.log('RouteGuard: No access after loading, returning null.');
       return null;
     }
   }
 
+  console.log('RouteGuard: User has access, rendering children.');
   return <>{children}</>;
 }

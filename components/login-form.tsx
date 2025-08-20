@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useId } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,9 @@ export function LoginForm() {
   const { login, isLoading } = useAuth();
   const router = useRouter();
 
+  const emailId = useId();
+  const passwordId = useId();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -33,7 +36,7 @@ export function LoginForm() {
 
     const success = await login(email, password);
     if (success) {
-      router.push("/");
+      router.push("/dashboard");
     } else {
       setError("Credenciais inválidas");
     }
@@ -51,9 +54,9 @@ export function LoginForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor={emailId}>Email</Label>
               <Input
-                id="email"
+                id={emailId}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -62,9 +65,9 @@ export function LoginForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor={passwordId}>Senha</Label>
               <Input
-                id="password"
+                id={passwordId}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

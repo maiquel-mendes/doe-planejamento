@@ -13,6 +13,8 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getUserById } from "@/lib/user-management";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -41,6 +43,25 @@ export function OperationalPlanningDetailModal({
   onClose,
   planning,
 }: OperationalPlanningDetailModalProps) {
+  const [creatorName, setCreatorName] = useState("");
+
+  useEffect(() => {
+    if (planning?.createdBy) {
+      const fetchCreator = async () => {
+        try {
+          const user = await getUserById(planning.createdBy);
+          setCreatorName(user?.name || "Desconhecido");
+        } catch (error) {
+          console.error("Failed to fetch creator name:", error);
+          setCreatorName("Erro ao carregar");
+        }
+      };
+      fetchCreator();
+    } else {
+      setCreatorName("");
+    }
+  }, [planning?.createdBy]);
+
   if (!planning) return null;
 
   return (
@@ -57,6 +78,7 @@ export function OperationalPlanningDetailModal({
             {planning.introduction.supportUnit}
           </DialogDescription>
         </DialogHeader>
+
 
         <Tabs defaultValue="introduction" className="w-full">
           <TabsList className="grid w-full grid-cols-6">
@@ -182,26 +204,24 @@ export function OperationalPlanningDetailModal({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {planning.assignments.map((func) => (
+                  {planning.assignments.map((assignment) => (
                     <div
-                      key={func.id}
+                      key={assignment.id}
                       className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
                     >
                       <div className="flex items-center gap-4">
                         <div>
-                          <p className="font-medium">{func.operatorName}</p>
+                          <p className="font-medium">{assignment.operatorName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {func.functionName}
+                            {assignment.assignedFunctions.map(f => f.name).join(", ")}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <Badge variant="outline">{func.vehiclePrefix}</Badge>
-                        {func.functionId && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {func.order}
-                          </p>
-                        )}
+                        <Badge variant="outline">{assignment.vehiclePrefix}</Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Ordem: {assignment.order}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -248,9 +268,7 @@ export function OperationalPlanningDetailModal({
                 <div className="space-y-3">
                   {
                     <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="font-medium">
-                        {planning.communications.frequency}
-                      </p>
+
                       <p className="text-sm text-muted-foreground">
                         {planning.communications.vehicleCall}
                       </p>
@@ -378,11 +396,11 @@ export function OperationalPlanningDetailModal({
         {/* Metadata */}
         <div className="pt-4 border-t space-y-2">
           <div className="text-xs text-muted-foreground">
-            Criado por {planning.createdBy} em{" "}
+            Criado por {creatorName} em{" "}
             {planning.createdAt.toLocaleDateString("pt-BR")}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Última atualização: {planning.updatedAt.toLocaleDateString("pt-BR")}
+            <div className="text-xs text-muted-foreground">
+              Última atualização: {planning.updatedAt.toLocaleDateString("pt-BR")}
+            </div>
           </div>
         </div>
       </DialogContent>

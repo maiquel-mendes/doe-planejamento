@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type React from "react";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ProtectedLayout } from "@/components/auth/protected-layout";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ html {
         <AuthProvider>
           <ProtectedLayout>{children}</ProtectedLayout>
         </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

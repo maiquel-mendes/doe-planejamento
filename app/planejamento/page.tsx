@@ -23,6 +23,7 @@ import {
   createOperationalPlanning,
   deleteOperationalPlanning,
   updateOperationalPlanning,
+  parseDates,
 } from "@/lib/operational-planning-management";
 import type { OperationalPlanning } from "@/types/operational-planning";
 
@@ -110,12 +111,16 @@ export default function PlanningPage() {
           setIsSubmitting(false);
           return;
         }
-        await updateOperationalPlanning(editingPlanning.id, data);
+        const updatedPlanning = await updateOperationalPlanning(editingPlanning.id, data);
         logAccess("UPDATE_PLANNING", `/planejamento/${editingPlanning.id}`, true);
         toast({
           title: "Sucesso",
           description: "Planejamento atualizado com sucesso",
         });
+        setEditingPlanning(parseDates(JSON.parse(JSON.stringify(updatedPlanning)))); // Update editingPlanning with fresh data and new reference
+        if (viewingPlanning && viewingPlanning.id === updatedPlanning.id) {
+          setViewingPlanning(parseDates(JSON.parse(JSON.stringify(updatedPlanning)))); // Also update viewingPlanning if it's the same one
+        }
       } else {
         // Create new planning
         if (!canCreate) {

@@ -1,7 +1,7 @@
 import type { OperationalPlanning } from "@/types/operational-planning";
 
 // Helper to convert date strings to Date objects
-function parseDates(planning: any): OperationalPlanning {
+export function parseDates(planning: any): OperationalPlanning {
   return {
     ...planning,
     createdAt: new Date(planning.createdAt),

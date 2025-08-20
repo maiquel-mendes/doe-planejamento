@@ -93,3 +93,32 @@ This section details significant improvements and solutions implemented recently
     *   **Problem:** Upon logout, the JWT cookie remained active, allowing session persistence.
     *   **Solution:** Ensured consistent cookie attributes (`Domain`, `Secure`, `Path`, `SameSite`, `HttpOnly`) between the login (`pages/api/auth/login.ts`) and logout (`pages/api/auth/logout.ts`) API responses. The `Domain` attribute is now dynamically set using `req.headers.host`.
 
+## 8.3 UI/UX Improvements
+
+*   **Responsive Selects in "Quadro de Funções":**
+    *   **Problem:** Select fields in the "Quadro de Funções" tab were overlapping and not responsive.
+    *   **Solution:** Adjusted CSS classes to use `flex flex-wrap` on the container and `flex-grow min-w-0` on individual `SelectTrigger` components for better space distribution and responsiveness.
+*   **Conditional "Função 2" Select:**
+    *   **Problem:** "Função 2" select was not conditionally rendered based on "Função 1" selection, and validation errors were not user-friendly.
+    *   **Solution:** Implemented conditional rendering for "Função 2" based on "Função 1" selection. Filtered "Função 2" options to exclude functions from the same category as "Função 1". Integrated `useToast` for user-friendly validation error messages.
+*   **"Adicionar Operador" Button Text:**
+    *   **Problem:** Button text was "Adicionar Função" instead of "Adicionar Operador".
+    *   **Solution:** Changed button text to "Adicionar Operador".
+
+## 8.4 Data Freshness & Display Consistency
+
+*   **Form Not Updating on Edit:**
+    *   **Problem:** Form fields were not reflecting saved changes after editing an existing planning.
+    *   **Solution:** Ensured `editingPlanning` state in `app/planejamento/page.tsx` is updated with a new object reference (`JSON.parse(JSON.stringify())` followed by `parseDates`) after a successful update, forcing `useOperationalPlanningForm` to re-initialize.
+*   **Viewing Modal Not Updating:**
+    *   **Problem:** `OperationalPlanningDetailModal` was not showing updated information for functions after an edit.
+    *   **Solution:** Updated `viewingPlanning` state in `app/planejamento/page.tsx` after an edit, similar to `editingPlanning`.
+*   **Creator Name Display:**
+    *   **Problem:** "Criado por" field in viewing modal and planning details page showed user ID instead of name.
+    *   **Solution:** Added `getUserById` function to `lib/user-management.ts`. Fetched and displayed creator's name in `OperationalPlanningDetailModal` and `app/planejamento/[id]/page.tsx`.
+*   **PDF Report Consistency:**
+    *   **Problem:** PDF report did not reflect changes in "Quadro de Funções" (two functions per operator), creator name, or removal of "Frequência" field.
+    *   **Solution:** Modified `components/planning/operational-planning-pdf-view.tsx` to:
+        *   Display `assignedFunctions` correctly.
+        *   Fetch and display creator's name.
+        *   Remove the display of the "Frequência" field.

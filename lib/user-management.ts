@@ -85,6 +85,18 @@ export const toggleUserStatus = async (id: string): Promise<User | null> => {
   return parseDates(updatedUser);
 };
 
+export const getUserById = async (id: string): Promise<User | null> => {
+  const response = await fetch(`/api/users/${id}`);
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch user with ID ${id}`);
+  }
+  const data: User = await response.json();
+  return parseDates(data);
+};
+
 export const deleteUser = async (id: string): Promise<boolean> => {
   const response = await fetch(`/api/users/${id}`, {
     method: "DELETE",
