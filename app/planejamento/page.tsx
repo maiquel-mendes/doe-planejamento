@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { RouteGuard } from "@/components/auth/route-guard";
-import { OperationalPlanningDetailModal } from "@/components/planning/operational-planning-detail-modal";
+
 import { OperationalPlanningFormModal } from "@/components/planning/operational-planning-form-modal";
 import { PlanningTable } from "@/components/planning/planning-table";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,7 @@ export default function PlanningPage() {
   const queryClient = useQueryClient();
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingPlanning, setEditingPlanning] =
-    useState<OperationalPlanning | null>(null);
-  const [viewingPlanning, setViewingPlanning] =
     useState<OperationalPlanning | null>(null);
 
   const canEdit = hasPermission("planning.edit");
@@ -204,11 +201,7 @@ export default function PlanningPage() {
     setIsFormModalOpen(true);
   };
 
-  const handleViewPlanning = (planning: OperationalPlanning) => {
-    logAccess("VIEW_PLANNING", `/planejamento/${planning.id}`, true);
-    setViewingPlanning(planning);
-    setIsDetailModalOpen(true);
-  };
+  
 
   return (
     <RouteGuard requiredPermissions={["planning.view"]}>
@@ -249,7 +242,6 @@ export default function PlanningPage() {
             <CardContent>
               <PlanningTable
                 plannings={plannings}
-                onViewPlanning={handleViewPlanning}
                 onEditPlanning={handleEditPlanning}
                 onDeletePlanning={removePlanning}
                 canEdit={canEdit}
@@ -266,11 +258,7 @@ export default function PlanningPage() {
             isLoading={isSubmitting}
           />
 
-          <OperationalPlanningDetailModal
-            isOpen={isDetailModalOpen}
-            onClose={() => setIsDetailModalOpen(false)}
-            planning={viewingPlanning}
-          />
+          
         </div>
       </div>
     </RouteGuard>

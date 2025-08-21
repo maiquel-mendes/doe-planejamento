@@ -203,7 +203,14 @@ export const OperationalPlanningPDFView: React.FC<OperationalPlanningPDFViewProp
         {planning.medical && (
           <View style={styles.section}>
             <Text style={styles.subtitle}>7. APH - Médico</Text>
-            <Text style={styles.text}>Médico: {planning.medical.medic}</Text>
+            <Text style={styles.text}>Médico(s):</Text>
+            {planning.medical.medic && planning.medical.medic.split(', ').map((name, index) => (
+              <View key={index} style={styles.listItem}>
+                <View style={styles.bullet} />
+                <Text style={styles.text}>{name}</Text>
+              </View>
+            ))}
+            {!planning.medical.medic && <Text style={styles.text}>Nenhum socorrista APH definido.</Text>}
             <Text style={styles.text}>Viatura para Transporte: {planning.medical.vehicleForTransport}</Text>
             <Text style={styles.text}>Contato Hospital: {planning.medical.hospitalContact}</Text>
             {planning.medical.procedures && <Text style={styles.text}>Procedimentos: {planning.medical.procedures}</Text>}

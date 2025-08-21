@@ -205,7 +205,7 @@ export function OperationalPlanningFormModal({
                   setNewLocation={setNewLocation}
                   addLocation={addLocation}
                   removeLocation={removeLocation}
-                />
+                  />
               </TabsContent>
             </div>
           </Tabs>

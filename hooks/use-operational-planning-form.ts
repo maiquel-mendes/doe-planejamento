@@ -90,7 +90,7 @@ export function useOperationalPlanningForm({
       },
       medical: {
         medic: '',
-        medicId: '',
+        medicId: [],
         vehicleForTransport: '',
         hospitalContact: '',
         procedures: '',
@@ -110,32 +110,45 @@ export function useOperationalPlanningForm({
   });
 
   // Helper function to map planning data to formData structure
-  const mapPlanningToFormData = useCallback((p: OperationalPlanning): OperationalPlanning => {
-    const validStatuses = ["draft", "approved", "in_progress", "completed", "cancelled"] as const;
-    const validPriorities = ["low", "medium", "high", "critical"] as const;
+  const mapPlanningToFormData = useCallback(
+    (p: OperationalPlanning): OperationalPlanning => {
+      const validStatuses = [
+        'draft',
+        'approved',
+        'in_progress',
+        'completed',
+        'cancelled',
+      ] as const;
+      const validPriorities = ['low', 'medium', 'high', 'critical'] as const;
 
-    return {
-      id: p.id,
-      introduction: p.introduction,
-      targets: p.targets || [],
-      assignments: p.assignments || [],
-      images: p.images || [],
-      schedule: p.schedule || [],
-      communications: p.communications,
-      peculiarities: p.peculiarities,
-      medical: p.medical,
-      complementaryMeasures: p.complementaryMeasures || [],
-      routes: p.routes || [],
-      locations: p.locations || [],
-      status: validStatuses.includes(p.status as any) ? p.status as typeof validStatuses[number] : "draft",
-      priority: validPriorities.includes(p.priority as any) ? p.priority as typeof validPriorities[number] : "medium",
-      createdBy: p.createdBy || '',
-      responsibleId: p.responsibleId || '',
-      responsibleName: p.responsibleName || '',
-      createdAt: p.createdAt || new Date(),
-      updatedAt: p.updatedAt || new Date(),
-    };
-  }, []);
+      return {
+        id: p.id,
+        introduction: p.introduction,
+        targets: p.targets || [],
+        assignments: p.assignments || [],
+        images: p.images || [],
+        schedule: p.schedule || [],
+        communications: p.communications,
+        peculiarities: p.peculiarities,
+        medical: p.medical,
+        complementaryMeasures: p.complementaryMeasures || [],
+        routes: p.routes || [],
+        locations: p.locations || [],
+        status: validStatuses.includes(p.status as any)
+          ? (p.status as (typeof validStatuses)[number])
+          : 'draft',
+        priority: validPriorities.includes(p.priority as any)
+          ? (p.priority as (typeof validPriorities)[number])
+          : 'medium',
+        createdBy: p.createdBy || '',
+        responsibleId: p.responsibleId || '',
+        responsibleName: p.responsibleName || '',
+        createdAt: p.createdAt || new Date(),
+        updatedAt: p.updatedAt || new Date(),
+      };
+    },
+    [],
+  );
 
   // useEffect to update formData when planning prop changes
   useEffect(() => {
@@ -169,7 +182,7 @@ export function useOperationalPlanningForm({
         },
         medical: {
           medic: '',
-          medicId: '',
+          medicId: [],
           vehicleForTransport: '',
           hospitalContact: '',
           procedures: '',
@@ -187,6 +200,69 @@ export function useOperationalPlanningForm({
       }));
     }
   }, [planning, mapPlanningToFormData]);
+
+  // Effect to automatically set APH medic based on assignments
+  useEffect(() => {
+    const APH_FUNCTION_NAME = 'APH'; // Define the APH function name
+
+    // Find the APH function ID
+    const aphFunction = functions.find(
+      (func) => func.name === APH_FUNCTION_NAME,
+    );
+
+    if (aphFunction) {
+      // Find all assignments that include the APH function
+      const aphAssignments = formData.assignments.filter((assignment) =>
+        assignment.assignedFunctions.some(
+          (assignedFunc) =>
+            assignedFunc.id === aphFunction.id ||
+            assignedFunc.name === APH_FUNCTION_NAME,
+        ),
+      );
+
+      if (aphAssignments.length > 0) {
+        // Get IDs of all APH medics
+        const aphMedicIds = aphAssignments.map(
+          (assignment) => assignment.operatorId,
+        );
+        // Get names of all APH medics
+        const aphMedicNames = aphAssignments.map(
+          (assignment) => assignment.operatorName,
+        );
+        // Join names with a comma and space for display
+        const medicNameString = aphMedicNames.join(', ');
+
+        setFormData((prev) => ({
+          ...prev,
+          medical: {
+            ...prev.medical,
+            medicId: aphMedicIds,
+            medic: medicNameString,
+          },
+        }));
+      } else {
+        // If no APH assignment is found, clear the medic fields
+        setFormData((prev) => ({
+          ...prev,
+          medical: {
+            ...prev.medical,
+            medicId: [],
+            medic: '',
+          },
+        }));
+      }
+    } else {
+      // If APH function itself is not defined, ensure medic fields are clear
+      setFormData((prev) => ({
+        ...prev,
+        medical: {
+          ...prev.medical,
+          medicId: [],
+          medic: '',
+        },
+      }));
+    }
+  }, [formData.assignments, functions]);
 
   const [newTarget, setNewTarget] = useState<Target>(blankTarget());
   const [newRoute, setNewRoute] = useState<Route>(blankRoute());

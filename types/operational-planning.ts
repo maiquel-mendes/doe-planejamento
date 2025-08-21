@@ -102,7 +102,7 @@ export interface OperationalPlanning {
 
   medical: {
     medic: string;
-    medicId: string;
+    medicId: string[];
     vehicleForTransport: string;
     hospitalContact: string;
     procedures: string;

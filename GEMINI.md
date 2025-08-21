@@ -158,3 +158,21 @@ This section details significant improvements and solutions implemented recently
     *   Added `orderBy` clauses to `findMany` operations in several API routes (`pages/api/functions/index.ts`, `pages/api/plannings/index.ts`, `pages/api/users/index.ts`, `pages/api/vehicles/index.ts`) for better data presentation and user experience.
 *   **Type Refinements:**
     *   Updated `vehicleId` in `components/planning/form-sections/functions-form-section.tsx` to `string | null` for more accurate type representation.
+
+### 8.7 Feature Enhancements & Refactoring
+
+*   **"Socorristas" Field Automation & Display:**
+    *   **Dynamic Population:** The "Socorristas" field in the "APH – Médico" section of the planning form is now automatically populated based on operators assigned the "APH" function in the "Quadro de Funções" tab.
+    *   **Multi-Name Display:** The field now displays all names of operators with the "APH" function, concatenated into a single string (e.g., "Nome1, Nome2").
+    *   **Data Structure Update:** `medical.medicId` in `types/operational-planning.ts` was updated from `string` to `string[]` to store IDs of all APH operators.
+    *   **UI Enhancement:** In the planning form, the "Socorristas" field is now a read-only label that displays the names as `Badge` components for better visual clarity. A message is shown if no APH operator is defined.
+    *   **PDF Reflection:** The `components/planning/operational-planning-pdf-view.tsx` was updated to display all APH medic names in a list format.
+
+*   **Component Reusability for Planning Details:**
+    *   **New Reusable Component:** Created `components/planning/operational-planning-display.tsx` to centralize the detailed display logic of an `OperationalPlanning` object.
+    *   **Reduced Duplication:** Both `components/planning/operational-planning-detail-modal.tsx` and `app/planejamento/[id]/page.tsx` now utilize `OperationalPlanningDisplay`, reducing code duplication and ensuring consistent presentation.
+
+*   **Navigation Improvements:**
+    *   **"Back" Button:** Added a "Voltar" button to the `app/planejamento/[id]/page.tsx` (planning detail page) for easy navigation back to the planning list.
+    *   **Direct Detail Navigation:** The "Ver" button in `components/planning/planning-table.tsx` (planning list) now directly navigates to the planning detail page (`/planejamento/[id]`) instead of opening a modal, streamlining the user flow.
+    *   **Cleanup:** Removed unused state and modal components from `app/planejamento/page.tsx` related to the old detail modal.

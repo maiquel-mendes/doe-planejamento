@@ -143,14 +143,18 @@ export function ComplementaryFormSection({
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Socorristas</Label>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Input
-                  value={medical.medic}
-                  onChange={(e) => handleMedicalChange("medic", e.target.value)}
-                  placeholder="Nome do socorrista"
-                />
-              </div>
+            <div className="p-2 border rounded-md bg-muted min-h-[40px] flex flex-wrap items-center gap-2">
+              {medical.medic ? (
+                medical.medic.split(', ').map((name, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    {name}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Nenhum socorrista APH definido. Adicione um operador com a função "APH" na aba "Funções".
+                </span>
+              )}
             </div>
           </div>
 

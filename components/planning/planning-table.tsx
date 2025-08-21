@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit, Eye, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +28,6 @@ import type { OperationalPlanning } from "@/types/operational-planning";
 
 interface PlanningTableProps {
   plannings: OperationalPlanning[];
-  onViewPlanning: (planning: OperationalPlanning) => void;
   onEditPlanning: (planning: OperationalPlanning) => void;
   onDeletePlanning: (planningId: string) => void;
   canEdit: boolean;
@@ -36,12 +36,12 @@ interface PlanningTableProps {
 
 export function PlanningTable({
   plannings,
-  onViewPlanning,
   onEditPlanning,
   onDeletePlanning,
   canEdit,
   isLoading,
 }: PlanningTableProps) {
+  const router = useRouter();
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "active":
@@ -164,7 +164,7 @@ export function PlanningTable({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onViewPlanning(planning)}
+                    onClick={() => router.push(`/planejamento/${planning.id}`)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
