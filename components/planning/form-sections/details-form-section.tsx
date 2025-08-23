@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import type { PlanningFormData } from '@/hooks/use-operational-planning-form';
 import type { Location, Vehicle, OperationalFunction } from '@/types/operational-planning';
 import type { User } from '@/types/auth';
+import { useId } from 'react';
 
 interface DetailsFormSectionProps {
   locations: Location[];
@@ -19,6 +20,7 @@ interface DetailsFormSectionProps {
 
 export function DetailsFormSection({ locations, vehicles, users, functions }: DetailsFormSectionProps) {
   const { register, setValue, getValues, watch } = useFormContext<PlanningFormData>();
+  const id = useId();
 
   const assignments = watch('assignments');
 
@@ -29,7 +31,8 @@ export function DetailsFormSection({ locations, vehicles, users, functions }: De
         // Find if any of the assigned functions for this assignment are APH category
         const hasAphFunction = assignment.functionIds?.some(funcId => {
           const func = functions.find(f => f.id === funcId);
-          return func?.category === aphFunctionCategory;
+          console.log('hasAphFunction', func?.name);
+          return func?.name === aphFunctionCategory;
         });
 
         if (hasAphFunction) {
@@ -57,9 +60,9 @@ export function DetailsFormSection({ locations, vehicles, users, functions }: De
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
-            <Label htmlFor="peculiarities">Peculiaridades da Operação</Label>
+            <Label htmlFor={`${id}-peculiarities`}>Peculiaridades da Operação</Label>
             <Textarea
-              id="peculiarities"
+              id={`${id}-peculiarities`}
               placeholder="Descreva quaisquer peculiaridades, como objetos de busca, observações gerais ou riscos identificados."
               rows={5}
               {...register('peculiarities')}
@@ -74,7 +77,7 @@ export function DetailsFormSection({ locations, vehicles, users, functions }: De
           <CardDescription>Atendimento pré-hospitalar e suporte médico</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <div className="grid gap-2">
+          <div className="grid gap-2">
             <Label>Socorristas (Definidos no Quadro de Funções)</Label>
             <div className="p-3 bg-muted/50 rounded-md min-h-[40px] flex flex-wrap gap-2 items-center">
               {aphMedics.length > 0 ? (
@@ -88,60 +91,60 @@ export function DetailsFormSection({ locations, vehicles, users, functions }: De
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="medical-procedures">Procedimentos</Label>
+            <Label htmlFor={`${id}-medical-procedures`}>Procedimentos</Label>
             <Textarea
-              id="medical-procedures"
+              id={`${id}-medical-procedures`}
               placeholder="Descreva os procedimentos de atendimento médico."
               rows={3}
               {...register('medicalPlan.procedures')}
             />
           </div>
-          
+
           <div className="p-3 bg-muted/50 rounded-md space-y-3">
             <h4 className="text-sm font-medium">Hospital de Referência</h4>
             <div className="grid gap-2">
-                <Label>Carregar Localização Existente (Opcional)</Label>
-                <Select onValueChange={(value) => handleHospitalSelect(value)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Selecione para carregar dados..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {locations.map((loc) => (
-                            <SelectItem key={loc.id} value={loc.id}>
-                                {loc.name} ({loc.address})
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+              <Label>Carregar Localização Existente (Opcional)</Label>
+              <Select onValueChange={(value) => handleHospitalSelect(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione para carregar dados..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name} ({loc.address})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="hospital-location-name">Nome do Local</Label>
-                    <Input id="hospital-location-name" {...register('medicalPlan.hospitalLocation.name')} placeholder="Ex: Hospital Municipal"/>
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="hospital-location-address">Endereço</Label>
-                    <Input id="hospital-location-address" {...register('medicalPlan.hospitalLocation.address')} placeholder="Rua, Número, Bairro..."/>
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="hospital-location-lat">Latitude</Label>
-                    <Input id="hospital-location-lat" type="number" {...register('medicalPlan.hospitalLocation.latitude')} placeholder="-23.550520"/>
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="hospital-location-lon">Longitude</Label>
-                    <Input id="hospital-location-lon" type="number" {...register('medicalPlan.hospitalLocation.longitude')} placeholder="-46.633308"/>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${id}-hospital-location-name`}>Nome do Local</Label>
+                <Input id={`${id}-hospital-location-name`} {...register('medicalPlan.hospitalLocation.name')} placeholder="Ex: Hospital Municipal" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${id}-hospital-location-address`}>Endereço</Label>
+                <Input id={`${id}-hospital-location-address`} {...register('medicalPlan.hospitalLocation.address')} placeholder="Rua, Número, Bairro..." />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${id}-hospital-location-lat`}>Latitude</Label>
+                <Input id={`${id}-hospital-location-lat`} type="number" {...register('medicalPlan.hospitalLocation.latitude')} placeholder="-23.550520" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${id}-hospital-location-lon`}>Longitude</Label>
+                <Input id={`${id}-hospital-location-lon`} type="number" {...register('medicalPlan.hospitalLocation.longitude')} placeholder="-46.633308" />
+              </div>
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="ambulance-vehicle">Viatura Ambulância</Label>
+            <Label htmlFor={`${id}-ambulance-vehicle`}>Viatura Ambulância</Label>
             <Select
               onValueChange={(value) => setValue('medicalPlan.ambulanceVehicleId', value)}
               value={getValues('medicalPlan.ambulanceVehicleId') || ''}
             >
-              <SelectTrigger id="ambulance-vehicle">
+              <SelectTrigger id={`${id}-ambulance-vehicle`}>
                 <SelectValue placeholder="Selecione a viatura" />
               </SelectTrigger>
               <SelectContent>

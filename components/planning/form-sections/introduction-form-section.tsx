@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PlanningFormData } from '@/hooks/use-operational-planning-form';
+import { useId } from 'react';
 
 export function IntroductionFormSection() {
+  const id = useId();
   const { register, control } = useFormContext<PlanningFormData>();
 
   return (
@@ -24,17 +26,17 @@ export function IntroductionFormSection() {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="service-order-number">Ordem de Serviço</Label>
+            <Label htmlFor={`${id}-service-order-number`}>Ordem de Serviço</Label>
             <Input
-              id="service-order-number"
+              id={`${id}-service-order-number`}
               placeholder="Ex: 013/2025 – DOE"
               {...register('introduction.serviceOrderNumber')}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="operation-type">Tipo de Operação</Label>
+            <Label htmlFor={`${id}-operation-type`}>Tipo de Operação</Label>
             <Input
-              id="operation-type"
+              id={`${id}-operation-type`}
               placeholder="Ex: Busca e Apreensão"
               {...register('introduction.operationType')}
             />
@@ -43,21 +45,21 @@ export function IntroductionFormSection() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="support-unit">Unidade de Apoio</Label>
+            <Label htmlFor={`${id}-support-unit`}>Unidade de Apoio</Label>
             <Input
-              id="support-unit"
+              id={`${id}-support-unit`}
               placeholder="Ex: P11, DOE"
               {...register('introduction.supportUnit')}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="mandate-type">Tipo de Mandado</Label>
+            <Label htmlFor={`${id}-mandate-type`}>Tipo de Mandado</Label>
             <Controller
               control={control}
               name="introduction.mandateType"
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                  <SelectTrigger id="mandate-type">
+                  <SelectTrigger id={`${id}-mandate-type`}>
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -80,17 +82,17 @@ export function IntroductionFormSection() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="operation-date">Data da Operação</Label>
+            <Label htmlFor={`${id}-operation-date`}>Data da Operação</Label>
             <Input
-              id="operation-date"
+              id={`${id}-operation-date`}
               type="date"
               {...register('introduction.operationDate')}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="operation-time">Horário da Operação</Label>
+            <Label htmlFor={`${id}-operation-time`}>Horário da Operação</Label>
             <Input
-              id="operation-time"
+              id={`${id}-operation-time`}
               type="time"
               {...register('introduction.operationTime')}
             />
@@ -98,9 +100,9 @@ export function IntroductionFormSection() {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="introduction-description">Descrição</Label>
+          <Label htmlFor={`${id}-introduction-description`}>Descrição</Label>
           <Textarea
-            id="introduction-description"
+            id={`${id}-introduction-description`}
             placeholder="Descrição da introdução"
             rows={3}
             {...register('introduction.description')}

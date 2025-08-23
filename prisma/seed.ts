@@ -226,12 +226,10 @@ async function main() {
           {
             time: new Date('2025-08-22T08:00:00Z'),
             activity: 'Briefing da equipe',
-            responsible: 'Admin User',
           },
           {
             time: new Date('2025-08-22T09:00:00Z'),
             activity: 'Deslocamento para o alvo',
-            responsible: 'Admin User',
           },
         ],
       },

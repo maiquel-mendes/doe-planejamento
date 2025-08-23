@@ -180,6 +180,11 @@ This section details significant improvements and solutions implemented recently
 *   **Type Refinements:**
     *   Updated `vehicleId` in `components/planning/form-sections/functions-form-section.tsx` to `string | null` for more accurate type representation.
 
+*   **Unique Element IDs with `useId()`:**
+    *   **Problem:** Using static string literals for `id` attributes can lead to duplicate IDs when components are rendered multiple times, causing accessibility and functionality issues.
+    *   **Solution:** Adopted `React.useId()` hook to generate unique, stable IDs for form elements and their associated labels. This ensures proper accessibility and avoids ID collisions.
+    *   **Impact:** Improved accessibility and robustness of UI components, especially in forms.
+
 ### 8.7 Feature Enhancements & Refactoring
 
 *   **"Socorristas" Field Automation & Display:**
