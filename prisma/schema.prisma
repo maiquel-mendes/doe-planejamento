@@ -132,7 +132,7 @@ model PlanningScheduleItem {
   id          String              @id @default(cuid())
   time        DateTime
   activity    String
-  responsible String
+  
   planningId  String              @map("planning_id")
   planning    OperationalPlanning @relation(fields: [planningId], references: [id])
 

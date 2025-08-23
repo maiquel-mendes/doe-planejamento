@@ -76,9 +76,9 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
                     ...(scheduleItems && {
             scheduleItems: {
               create: scheduleItems.map((s: any) => ({
-                ...s,
                 id: undefined,
                 time: new Date(s.time),
+                activity: s.activity,
               })),
             },
           }),

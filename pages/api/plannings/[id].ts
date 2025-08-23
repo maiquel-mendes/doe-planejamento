@@ -61,7 +61,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           where: { id },
           data: {
             ...mainPlanningData,
-            ...(introduction && { introduction: { upsert: { where: { planningId: id }, create: { ...introduction, planningId: id }, update: introduction } } }),
+            ...(introduction && { introduction: { upsert: { where: { planningId: id }, create: { ...introduction }, update: introduction } } }),
           },
         });
 
@@ -133,7 +133,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         await tx.planningScheduleItem.deleteMany({ where: { planningId: id } });
         if (scheduleItems && scheduleItems.length > 0) {
           await tx.planningScheduleItem.createMany({
-            data: scheduleItems.map((item: any) => ({ ...item, id: undefined, time: new Date(item.time), planningId: id })),
+            data: scheduleItems.map((item: any) => ({ id: undefined, time: new Date(item.time), activity: item.activity, planningId: id })),
           });
         }
 

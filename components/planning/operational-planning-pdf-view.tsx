@@ -133,7 +133,7 @@ export const OperationalPlanningPDFView: React.FC<OperationalPlanningPDFViewProp
               <View key={item.id} style={styles.listItem}>
                 <View style={styles.bullet} />
                 <Text style={styles.text}>
-                  {new Date(item.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: {item.activity} (Resp: {item.responsible})
+                  {new Date(item.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: {item.activity}
                 </Text>
               </View>
             ))}
