@@ -1,3 +1,4 @@
+import { useFormContext, Controller } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,17 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { OperationalPlanning } from "@/types/operational-planning";
+import type { PlanningFormData } from '@/hooks/use-operational-planning-form';
 
-interface IntroductionFormSectionProps {
-  introduction: OperationalPlanning["introduction"];
-  onFieldChange: (field: keyof OperationalPlanning["introduction"], value: string) => void;
-}
+export function IntroductionFormSection() {
+  const { register, control } = useFormContext<PlanningFormData>();
 
-export function IntroductionFormSection({
-  introduction,
-  onFieldChange,
-}: IntroductionFormSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -29,83 +24,86 @@ export function IntroductionFormSection({
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label>Ordem de Serviço</Label>
+            <Label htmlFor="service-order-number">Ordem de Serviço</Label>
             <Input
-              value={introduction.serviceOrderNumber}
-              onChange={(e) => onFieldChange("serviceOrderNumber", e.target.value)}
+              id="service-order-number"
               placeholder="Ex: 013/2025 – DOE"
+              {...register('introduction.serviceOrderNumber')}
             />
           </div>
           <div className="grid gap-2">
-            <Label>Tipo de Operação</Label>
+            <Label htmlFor="operation-type">Tipo de Operação</Label>
             <Input
-              value={introduction.operationType}
-              onChange={(e) => onFieldChange("operationType", e.target.value)}
+              id="operation-type"
               placeholder="Ex: Busca e Apreensão"
+              {...register('introduction.operationType')}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label>Unidade de Apoio</Label>
+            <Label htmlFor="support-unit">Unidade de Apoio</Label>
             <Input
-              value={introduction.supportUnit}
-              onChange={(e) => onFieldChange("supportUnit", e.target.value)}
+              id="support-unit"
               placeholder="Ex: P11, DOE"
+              {...register('introduction.supportUnit')}
             />
           </div>
           <div className="grid gap-2">
-            <Label>Tipo de Mandado</Label>
-            <Select
-              value={introduction.mandateType}
-              onValueChange={(value) => onFieldChange("mandateType", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="busca-apreensao">
-                  Busca e Apreensão
-                </SelectItem>
-                <SelectItem value="mandado-prisao">
-                  Mandado de Prisão
-                </SelectItem>
-                <SelectItem value="busca-prisao">
-                  Busca e Apreensão + Mandado de Prisão
-                </SelectItem>
-                <SelectItem value="outros">Outros</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="mandate-type">Tipo de Mandado</Label>
+            <Controller
+              control={control}
+              name="introduction.mandateType"
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                  <SelectTrigger id="mandate-type">
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="busca-apreensao">
+                      Busca e Apreensão
+                    </SelectItem>
+                    <SelectItem value="mandado-prisao">
+                      Mandado de Prisão
+                    </SelectItem>
+                    <SelectItem value="busca-prisao">
+                      Busca e Apreensão + Mandado de Prisão
+                    </SelectItem>
+                    <SelectItem value="outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
-            <Label>Data da Operação</Label>
+            <Label htmlFor="operation-date">Data da Operação</Label>
             <Input
+              id="operation-date"
               type="date"
-              value={introduction.operationDate}
-              onChange={(e) => onFieldChange("operationDate", e.target.value)}
+              {...register('introduction.operationDate')}
             />
           </div>
           <div className="grid gap-2">
-            <Label>Horário da Operação</Label>
+            <Label htmlFor="operation-time">Horário da Operação</Label>
             <Input
+              id="operation-time"
               type="time"
-              value={introduction.operationTime}
-              onChange={(e) => onFieldChange("operationTime", e.target.value)}
+              {...register('introduction.operationTime')}
             />
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label>Descrição</Label>
+          <Label htmlFor="introduction-description">Descrição</Label>
           <Textarea
-            value={introduction.description}
-            onChange={(e) => onFieldChange("description", e.target.value)}
+            id="introduction-description"
             placeholder="Descrição da introdução"
             rows={3}
+            {...register('introduction.description')}
           />
         </div>
       </CardContent>

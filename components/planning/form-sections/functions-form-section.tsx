@@ -1,5 +1,7 @@
 import { Plus, X } from "lucide-react";
+import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -14,266 +16,134 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type {
-  OperationalAssignment,
-  OperationalFunction,
-  Vehicle,
-} from "@/types/operational-planning";
+import { Badge } from "@/components/ui/badge";
+import type { PlanningFormData } from '@/hooks/use-operational-planning-form';
+import type { OperationalFunction, Vehicle } from "@/types/operational-planning";
 import type { User } from "@/types/auth";
+import { Controller } from "react-hook-form";
 
 interface FunctionsFormSectionProps {
-  assignments: OperationalAssignment[];
-  newAssignment: {
-    id: string;
-    operatorId: string;
-    operatorName: string;
-    vehicleId?: string | null;
-    vehiclePrefix?: string;
-    order: number;
-    selectedFunction1Id: string;
-    selectedFunction2Id: string;
-  };
-  setNewAssignment: (assignment: {
-    id: string;
-    operatorId: string;
-    operatorName: string;
-    vehicleId?: string | null;
-    vehiclePrefix?: string;
-    order: number;
-    selectedFunction1Id: string;
-    selectedFunction2Id: string;
-  }) => void;
-  addAssignment: () => { success: boolean; message?: string };
-  removeAssignment: (id: string) => void;
-  updateFunctionAssignment: (
-    index: number,
-    field: "operatorId" | "vehicleId" | "function1Id" | "function2Id",
-    value: string,
-  ) => void;
   users: User[];
   functions: OperationalFunction[];
   vehicles: Vehicle[];
-  showToast: (props: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
 }
 
-export function FunctionsFormSection({
-  assignments,
-  newAssignment,
-  setNewAssignment,
-  addAssignment,
-  removeAssignment,
-  updateFunctionAssignment,
-  users,
-  functions,
-  vehicles,
-  showToast,
-}: FunctionsFormSectionProps) {
+interface AssignmentRowProps {
+  control: any; // useFormContext's control
+  index: number;
+  remove: (index: number) => void;
+  users: User[];
+  functions: OperationalFunction[];
+  vehicles: Vehicle[];
+}
+
+function AssignmentRow({ control, index, remove, users, functions, vehicles }: AssignmentRowProps) {
+  const assignment = useWatch({ control, name: `assignments.${index}` });
+  const assignedFunctions = functions.filter((f: OperationalFunction) => assignment.functionIds?.includes(f.id));
+  const assignedCategories = assignedFunctions.map((f: OperationalFunction) => f.category);
+
+  const availableFunctions = functions.filter((f: OperationalFunction) => !assignedCategories.includes(f.category));
+
+  const { setValue } = useFormContext<PlanningFormData>();
+
+  const handleAddFunction = (functionId: string) => {
+    const currentIds = assignment.functionIds || [];
+    setValue(`assignments.${index}.functionIds`, [...currentIds, functionId]);
+  };
+
+  const handleRemoveFunction = (functionId: string) => {
+    const currentIds = assignment.functionIds || [];
+    setValue(`assignments.${index}.functionIds`, currentIds.filter((id: string) => id !== functionId));
+  };
+
+  return (
+    <div className="p-4 border rounded-lg space-y-3">
+      <div className="flex justify-between items-start">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label>Operador</Label>
+            <Controller
+              control={control}
+              name={`assignments.${index}.userId`}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o Operador" /></SelectTrigger>
+                  <SelectContent>{users.map((user: User) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Viatura (Opcional)</Label>
+            <Controller
+              control={control}
+              name={`assignments.${index}.vehicleId`}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a Viatura" /></SelectTrigger>
+                  <SelectContent>{vehicles.map((v: Vehicle) => <SelectItem key={v.id} value={v.id}>{v.prefix} - {v.model}</SelectItem>)}</SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+      </div>
+      <div className="grid gap-2">
+        <Label>Funções Atribuídas</Label>
+        <div className="flex flex-wrap gap-2 min-h-[30px]">
+          {assignedFunctions.map((func: OperationalFunction) => (
+            <Badge key={func.id} variant="secondary">
+              {func.name}
+              <button type="button" className="ml-2" onClick={() => handleRemoveFunction(func.id)}><X className="h-3 w-3"/></button>
+            </Badge>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-2">
+        <Select onValueChange={handleAddFunction} value="">
+          <SelectTrigger><SelectValue placeholder="Adicionar nova função..." /></SelectTrigger>
+          <SelectContent>
+            {availableFunctions.map((func: OperationalFunction) => (
+              <SelectItem key={func.id} value={func.id}>{func.name} ({func.category})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+export function FunctionsFormSection({ users, functions, vehicles }: FunctionsFormSectionProps) {
+  const { control } = useFormContext<PlanningFormData>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'assignments',
+  });
+
   const handleAddAssignment = () => {
-    const result = addAssignment();
-    if (!result.success) {
-      showToast({
-        title: "Erro ao adicionar operador",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
+    append({ userId: '', vehicleId: null, functionIds: [] });
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>5. Quadro de Funções</CardTitle>
-        <CardDescription>
-          Distribuição de operadores, funções e viaturas
-        </CardDescription>
+        <CardDescription>Distribuição de operadores, funções e viaturas.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          {assignments.map((assignment, index) => (
-            <div
-              key={assignment.id}
-              className="flex flex-wrap gap-2 p-3 border rounded"
-            >
-              <Select
-                value={assignment.operatorId || ""}
-                onValueChange={(value) =>
-                  updateFunctionAssignment(index, "operatorId", value)
-                }
-              >
-                <SelectTrigger className="min-w-0 flex-grow">
-                  <SelectValue placeholder="Operador" />
-                </SelectTrigger>
-                <SelectContent>
-                  {users.map((user: User) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={assignment.assignedFunctions[0]?.id || ""}
-                onValueChange={(value) =>
-                  updateFunctionAssignment(index, "function1Id", value)
-                }
-              >
-                <SelectTrigger className="min-w-0 flex-grow">
-                  <SelectValue placeholder="Função 1" />
-                </SelectTrigger>
-                <SelectContent>
-                  {functions.map((func: OperationalFunction) => (
-                    <SelectItem key={func.id} value={func.id}>
-                      {func.name} ({func.category})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {assignment.assignedFunctions[0]?.id && (
-                <Select
-                  className="min-w-0 flex-grow"
-                  value={assignment.assignedFunctions[1]?.id || ""}
-                  onValueChange={(value) =>
-                    updateFunctionAssignment(index, "function2Id", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Função 2" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {functions.map((func: OperationalFunction) => (
-                      <SelectItem key={func.id} value={func.id}>
-                        {func.name} ({func.category})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <Select
-                value={assignment.vehicleId || ""}
-                onValueChange={(value) =>
-                  updateFunctionAssignment(index, "vehicleId", value)
-                }
-              >
-                <SelectTrigger className="min-w-0 flex-grow">
-                  <SelectValue placeholder="Viatura" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle: Vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.prefix} - {vehicle.model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => removeAssignment(assignment.id)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="space-y-3">
+          {fields.map((field, index) => (
+            <AssignmentRow 
+              key={field.id} 
+              {...{ control, index, remove, users, functions, vehicles }} 
+            />
           ))}
-          <div className="flex flex-wrap gap-2 p-3 border rounded">
-            <Select
-              value={newAssignment.operatorId}
-              onValueChange={(value) =>
-                setNewAssignment({ ...newAssignment, operatorId: value })
-              }
-            >
-              <SelectTrigger className="min-w-0 flex-grow">
-                <SelectValue placeholder="Operador" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((user: User) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={newAssignment.selectedFunction1Id}
-              onValueChange={(value) =>
-                setNewAssignment({ ...newAssignment, selectedFunction1Id: value })
-              }
-            >
-              <SelectTrigger className="min-w-0 flex-grow">
-                <SelectValue placeholder="Função 1" />
-              </SelectTrigger>
-              <SelectContent>
-                {functions.map((func: OperationalFunction) => (
-                  <SelectItem key={func.id} value={func.id}>
-                    {func.name} ({func.category})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {newAssignment.selectedFunction1Id && (
-              <Select
-                value={newAssignment.selectedFunction2Id}
-                onValueChange={(value) =>
-                  setNewAssignment({ ...newAssignment, selectedFunction2Id: value })
-                }
-              >
-                <SelectTrigger className="min-w-0 flex-grow">
-                  <SelectValue placeholder="Função 2" />
-                </SelectTrigger>
-                <SelectContent>
-                  {functions
-                    .filter((func) => {
-                      const selectedFunc1 = functions.find(
-                        (f) => f.id === newAssignment.selectedFunction1Id,
-                      );
-                      return selectedFunc1
-                        ? func.category !== selectedFunc1.category
-                        : true;
-                    })
-                    .map((func: OperationalFunction) => (
-                      <SelectItem key={func.id} value={func.id}>
-                        {func.name} ({func.category})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <Select
-              value={newAssignment.vehicleId || ""}
-              onValueChange={(value) =>
-                setNewAssignment({ ...newAssignment, vehicleId: value })
-              }
-            >
-              <SelectTrigger className="min-w-0 flex-grow">
-                <SelectValue placeholder="Viatura" />
-              </SelectTrigger>
-              <SelectContent>
-                {vehicles.map((vehicle: Vehicle) => (
-                  <SelectItem key={vehicle.id} value={vehicle.id}>
-                    {vehicle.prefix} - {vehicle.model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddAssignment}
-              className="col-span-full"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Operador
-            </Button>
-          </div>
         </div>
+        <Button type="button" variant="outline" onClick={handleAddAssignment} className="w-full mt-4">
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Atribuição de Operador
+        </Button>
       </CardContent>
     </Card>
   );

@@ -503,7 +503,7 @@ export default function FunctionsPage() {
                     <Label htmlFor={descriptionId}>Descrição</Label>
                     <Textarea
                       id={descriptionId}
-                      value={formData.description}
+                      value={formData.description || ''}
                       onChange={(e) =>
                         setFormData({
                           ...formData,

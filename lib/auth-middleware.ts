@@ -10,10 +10,10 @@ export interface AuthenticatedRequest extends NextApiRequest {
 }
 
 // Define the type for a handler that uses the AuthenticatedRequest.
-type AuthenticatedHandler = (
+export type AuthenticatedHandler = (
   req: AuthenticatedRequest,
   res: NextApiResponse
-) => Promise<void> | void;
+) => Promise<void | NextApiResponse<any>> | void | NextApiResponse<any>;
 
 /**
  * Middleware to authenticate a token from the Authorization header.

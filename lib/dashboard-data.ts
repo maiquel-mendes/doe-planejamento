@@ -186,10 +186,10 @@ const getEditorDashboardData = (
     .map((planning, _index) => ({
       id: planning.id,
       type: "planning_updated",
-      title: planning.introduction.serviceOrderNumber,
-      description: `Progresso: ${planning.introduction.description}% - Status: ${planning.status}`,
+      title: planning.introduction?.serviceOrderNumber || 'N/A',
+      description: `Progresso: ${planning.introduction?.description || 'N/A'}% - Status: ${planning.status}`,
       timestamp: planning.updatedAt,
-      user: planning.responsibleName,
+      user: planning.responsible.name,
       priority:
         planning.priority === "high" || planning.priority === "critical"
           ? "high"
@@ -274,10 +274,10 @@ const getUserDashboardData = (
     .map((planning, _index) => ({
       id: planning.id,
       type: "planning_updated",
-      title: planning.introduction.serviceOrderNumber,
-      description: `Responsável: ${planning.responsibleName} - Status: ${planning.status}`,
+      title: planning.introduction?.serviceOrderNumber || 'N/A',
+      description: `Responsável: ${planning.responsible.name} - Status: ${planning.status}`,
       timestamp: planning.updatedAt,
-      user: planning.responsibleName,
+      user: planning.responsible.name,
       priority: "low",
     }));
 

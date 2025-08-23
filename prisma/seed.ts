@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/lib/generated/prisma';
+import { PrismaClient } from '../lib/generated/prisma';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -46,7 +46,7 @@ async function main() {
   console.log({ adminUser, editorUser, regularUser });
 
   // Seed Operational Functions
-  const func1 = await prisma.operationalFunction.upsert({
+  const funcCoordMotorista = await prisma.operationalFunction.upsert({
     where: { name: 'Coordenador/Motorista' },
     update: {},
     create: {
@@ -58,7 +58,7 @@ async function main() {
     },
   });
 
-  const func2 = await prisma.operationalFunction.upsert({
+  const funcArrombamento = await prisma.operationalFunction.upsert({
     where: { name: 'Arrombamento Mecânico' },
     update: {},
     create: {
@@ -69,7 +69,7 @@ async function main() {
     },
   });
 
-  const func3 = await prisma.operationalFunction.upsert({
+  const funcEscudoTaser = await prisma.operationalFunction.upsert({
     where: { name: 'Escudo/Taser' },
     update: {},
     create: {
@@ -80,10 +80,26 @@ async function main() {
     },
   });
 
-  console.log({ func1, func2, func3 });
+  const funcAPH = await prisma.operationalFunction.upsert({
+    where: { name: 'APH' },
+    update: {},
+    create: {
+      name: 'APH',
+      description: 'Atendimento Pré-Hospitalar',
+      category: 'apoio',
+      isActive: true,
+    },
+  });
+
+  console.log({
+    funcCoordMotorista,
+    funcArrombamento,
+    funcEscudoTaser,
+    funcAPH,
+  });
 
   // Seed Vehicles
-  const vehicle1 = await prisma.vehicle.upsert({
+  const vehicleHilux = await prisma.vehicle.upsert({
     where: { prefix: 'D-0210' },
     update: {},
     create: {
@@ -95,7 +111,7 @@ async function main() {
     },
   });
 
-  const vehicle2 = await prisma.vehicle.upsert({
+  const vehicleRanger = await prisma.vehicle.upsert({
     where: { prefix: 'D-0212' },
     update: {},
     create: {
@@ -107,54 +123,152 @@ async function main() {
     },
   });
 
-  console.log({ vehicle1, vehicle2 });
-
-  // Seed Operational Plannings
-  const planning1 = await prisma.operationalPlanning.upsert({
-    where: { introduction: { serviceOrderNumber: '001/2025' } }, // Use unique serviceOrderNumber
+  const vehicleAmbulance = await prisma.vehicle.upsert({
+    where: { prefix: 'AMB-001' },
     update: {},
     create: {
-      introduction: {
-        serviceOrderNumber: '001/2025',
-        operationType: 'Patrulhamento',
-        description: 'Patrulhamento de rotina na área central.',
-        supportUnit: 'PM',
-        mandateType: 'nenhum',
-        operationDate: '2025-08-20',
-        operationTime: '08:00',
-      },
-      targets: [],
-      images: [],
-      assignments: [],
-      schedule: [],
-      communications: {
-        vehicleCall: 'PATRULHA 01',
-        operatorCall: 'ALPHA',
-      },
-      peculiarities: {
-        searchObjects: [],
-        observations: 'Área de baixo risco.',
-        risks: 'Nenhum risco identificado.',
-      },
-      medical: {
-        medic: 'Nenhum',
-        medicId: '',
-        vehicleForTransport: '',
-        hospitalContact: '',
-        procedures: '',
-      },
-      complementaryMeasures: [],
-      routes: [],
-      locations: [],
-      status: 'draft',
-      priority: 'low',
-      createdBy: adminUser.id, // Link to admin user
-      responsibleId: adminUser.id,
-      responsibleName: adminUser.name,
+      prefix: 'AMB-001',
+      type: 'ambulancia',
+      model: 'Mercedes-Benz Sprinter',
+      capacity: 2,
+      isActive: true,
     },
   });
 
-  console.log({ planning1 });
+  console.log({ vehicleHilux, vehicleRanger, vehicleAmbulance });
+
+  // Seed Locations
+  const locHospital = await prisma.location.upsert({
+    where: { name: 'Hospital Central' },
+    update: {},
+    create: {
+      name: 'Hospital Central',
+      address: 'Rua Principal, 1000, Centro',
+      latitude: -15.7801,
+      longitude: -47.9292,
+    },
+  });
+
+  const locTargetAddress = await prisma.location.upsert({
+    where: { name: 'Endereço do Alvo Principal' },
+    update: {},
+    create: {
+      name: 'Endereço do Alvo Principal',
+      address: 'Rua das Flores, 123, Bairro Alegre',
+      latitude: -15.79,
+      longitude: -47.93,
+    },
+  });
+
+  const locBase = await prisma.location.upsert({
+    where: { name: 'Base de Operações' },
+    update: {},
+    create: {
+      name: 'Base de Operações',
+      address: 'Av. do Exército, S/N, Setor Militar',
+      latitude: -15.77,
+      longitude: -47.92,
+    },
+  });
+
+  console.log({ locHospital, locTargetAddress, locBase });
+
+  // Seed Operational Plannings
+  const examplePlanning = await prisma.operationalPlanning.upsert({
+    where: { id: 'example-planning-1' }, // Use a fixed ID for upsert to work
+    update: {},
+    create: {
+      id: 'example-planning-1',
+      status: 'draft',
+      priority: 'high',
+      peculiarities: 'Área residencial com alto fluxo de veículos.',
+      createdById: adminUser.id,
+      responsibleId: adminUser.id,
+
+      // Related entities
+      introduction: {
+        create: {
+          serviceOrderNumber: '001/2025 – DOE',
+          operationType: 'Busca e Apreensão',
+          description:
+            'Operação para cumprimento de mandado de busca e apreensão.',
+          supportUnit: 'P11, DOE',
+          mandateType: 'busca-apreensao',
+          operationDate: '2025-08-22',
+          operationTime: '08:00',
+        },
+      },
+      targets: {
+        create: [
+          {
+            targetName: 'João da Silva',
+            description: 'Suspeito de tráfico de drogas.',
+            location: { connect: { id: locTargetAddress.id } },
+          },
+        ],
+      },
+      assignments: {
+        create: [
+          {
+            userId: adminUser.id,
+            vehicleId: vehicleHilux.id,
+            // functions will be connected in a separate step
+          },
+          {
+            userId: editorUser.id,
+            vehicleId: vehicleAmbulance.id,
+            // functions will be connected in a separate step
+          },
+        ],
+      },
+      scheduleItems: {
+        create: [
+          {
+            time: new Date('2025-08-22T08:00:00Z'),
+            activity: 'Briefing da equipe',
+            responsible: 'Admin User',
+          },
+          {
+            time: new Date('2025-08-22T09:00:00Z'),
+            activity: 'Deslocamento para o alvo',
+            responsible: 'Admin User',
+          },
+        ],
+      },
+      medicalPlan: {
+        create: {
+          procedures: 'Protocolo de atendimento de trauma.',
+          hospitalLocation: { connect: { id: locHospital.id } },
+          ambulanceVehicle: { connect: { id: vehicleAmbulance.id } },
+        },
+      },
+    },
+  });
+
+  // Connect functions to assignments after planning creation
+  const adminAssignment = await prisma.planningAssignment.findFirstOrThrow({
+    where: { userId: adminUser.id, planningId: examplePlanning.id },
+  });
+  await prisma.planningAssignment.update({
+    where: { id: adminAssignment.id },
+    data: {
+      functions: {
+        connect: [{ id: funcCoordMotorista.id }, { id: funcAPH.id }],
+      },
+    },
+  });
+
+  const editorAssignment = await prisma.planningAssignment.findFirstOrThrow({
+    where: { userId: editorUser.id, planningId: examplePlanning.id },
+  });
+  await prisma.planningAssignment.update({
+    where: { id: editorAssignment.id },
+    data: {
+      functions: { connect: [{ id: funcAPH.id }] },
+    },
+  });
+
+  console.log({ examplePlanning });
 }
 
 main()

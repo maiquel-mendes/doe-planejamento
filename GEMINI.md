@@ -36,10 +36,31 @@ This document summarizes key information about the 'doe-planejamento' applicatio
 - `types/`: TypeScript type definitions.
 
 ## 4. Database Schema Overview (Prisma Models)
-- `User`: id, name, email, password (hashed), role, createdAt, isActive.
+The database schema has undergone a significant refactoring to move away from JSONB fields towards explicit relational models, enhancing data integrity, query capabilities, and type safety.
+
+- `User`: id, name, email, password (hashed), role, isActive, createdAt.
+  - **Relations:** createdPlannings, responsibleForPlannings, assignments, RefreshToken.
+- `RefreshToken`: id, hashedToken (unique), userId, revoked, createdAt, updatedAt.
+  - **Relations:** user.
 - `OperationalFunction`: id, name (unique), description, category, isActive, createdAt, updatedAt.
+  - **Relations:** assignments (many-to-many with PlanningAssignment).
 - `Vehicle`: id, prefix (unique), type, model, capacity, isActive, createdAt, updatedAt.
-- `OperationalPlanning`: id, introduction (JSONB), targets (JSONB), images (JSONB), assignments (JSONB), schedule (JSONB), communications (JSONB), peculiarities (JSONB), medical (JSONB), complementaryMeasures (JSONB), routes (JSONB), locations (JSONB), status, priority, createdBy, responsibleId, responsibleName, createdAt, updatedAt.
+  - **Relations:** medicalPlans, assignments.
+- `Location`: id, name (unique), address, latitude, longitude, createdAt, updatedAt.
+  - **Relations:** medicalPlansAsHospital, targets.
+- `OperationalPlanning`: id, status, priority, peculiarities (String?), createdById, responsibleId, createdAt, updatedAt.
+  - **Relations:** introduction (One-to-One), medicalPlan (One-to-One), createdBy (User), responsible (User), assignments (One-to-Many), scheduleItems (One-to-Many), targets (One-to-Many).
+- `IntroductionSection`: id, serviceOrderNumber (unique), operationType, description, supportUnit, mandateType, operationDate, operationTime, planningId.
+  - **Relations:** planning (OperationalPlanning).
+- `PlanningTarget`: id, targetName, description (String?), locationId, planningId.
+  - **Relations:** location (Location), planning (OperationalPlanning).
+- `PlanningAssignment`: id, planningId, userId, vehicleId (String?), medicalPlanId (String?).
+  - **Relations:** functions (Many-to-Many with OperationalFunction), medicalPlan, planning, user, vehicle.
+- `PlanningScheduleItem`: id, time, activity, responsible, planningId.
+  - **Relations:** planning (OperationalPlanning).
+- `MedicalPlan`: id, procedures, planningId (unique), hospitalLocationId, ambulanceVehicleId.
+  - **Relations:** ambulanceVehicle (Vehicle), hospitalLocation (Location), planning (OperationalPlanning), aphAssignments.
+
 
 ## 5. Recurring Issues & Solutions
 - **"Maximum update depth exceeded" / Unstable Dependencies:** Often caused by unstable functions in `useEffect`/`useCallback` dependency arrays. Solution: Wrap functions in `useCallback` and ensure all dependencies (including `user` from `useAuth()`) are stable.
@@ -176,3 +197,61 @@ This section details significant improvements and solutions implemented recently
     *   **"Back" Button:** Added a "Voltar" button to the `app/planejamento/[id]/page.tsx` (planning detail page) for easy navigation back to the planning list.
     *   **Direct Detail Navigation:** The "Ver" button in `components/planning/planning-table.tsx` (planning list) now directly navigates to the planning detail page (`/planejamento/[id]`) instead of opening a modal, streamlining the user flow.
     *   **Cleanup:** Removed unused state and modal components from `app/planejamento/page.tsx` related to the old detail modal.
+
+### 8.9 Major Data Model Refactoring & Form Management Update
+
+This is the most significant recent change, moving from a JSONB-heavy data model to a fully relational one, and revamping form management.
+
+*   **Database Schema Transformation (Prisma):**
+    *   **Problem:** Previous `OperationalPlanning` model relied heavily on JSONB fields (e.g., `introduction`, `targets`, `assignments`, `medical`, `peculiarities`, `routes`, `locations`, `schedule`, `complementaryMeasures`) for complex data structures. This approach limited data integrity, query flexibility, and type safety at the database level.
+    *   **Solution:** All complex JSONB fields within `OperationalPlanning` have been extracted into dedicated, fully relational Prisma models:
+        *   `IntroductionSection` (One-to-One with `OperationalPlanning`)
+        *   `PlanningTarget` (One-to-Many with `OperationalPlanning`, One-to-One with `Location`)
+        *   `PlanningAssignment` (One-to-Many with `OperationalPlanning`, Many-to-Many with `OperationalFunction`, One-to-One with `User`, One-to-One with `Vehicle`)
+        *   `PlanningScheduleItem` (One-to-Many with `OperationalPlanning`)
+        *   `MedicalPlan` (One-to-One with `OperationalPlanning`, One-to-One with `Location` for hospital, One-to-One with `Vehicle` for ambulance)
+        *   `Location` (New standalone model for reusable location data)
+    *   **Impact:** Enhanced data integrity (enforced by database constraints), improved query performance, better type safety across the stack, and a clearer representation of business entities.
+
+*   **Form Management Overhaul (React Hook Form & Zod):**
+    *   **Problem:** Previous form handling was largely manual with `useState` and custom logic, leading to boilerplate, potential for bugs (e.g., "uncontrolled to controlled input"), and less robust validation.
+    *   **Solution:** The entire operational planning form (`OperationalPlanningFormModal` and its sub-sections) has been refactored to use `react-hook-form` with `zod` for schema validation.
+        *   A comprehensive `zod` schema (`planningSchema`) now defines the structure and validation rules for the entire planning form data, mirroring the new relational database schema.
+        *   `useForm` hook centralizes form state, validation, and submission logic.
+        *   `useFieldArray` is used for dynamic lists (e.g., `targets`, `assignments`, `scheduleItems`), simplifying add/remove operations.
+        *   `Controller` components are used for integrating UI library components (Shadcn/ui `Select`, `Input`, etc.) with `react-hook-form`.
+    *   **Impact:** Reduced form boilerplate, centralized and robust validation, improved developer experience, and better performance due to optimized re-renders.
+
+*   **API Routes Adaptation:**
+    *   **Problem:** Existing API routes for plannings (`pages/api/plannings/index.ts`, `pages/api/plannings/[id].ts`) were designed for JSONB fields and simple CRUD.
+    *   **Solution:** API routes for plannings have been significantly updated to handle the new relational data model:
+        *   **Creation (POST):** Now uses nested `create` and `connectOrCreate` operations in Prisma to create the main `OperationalPlanning` record along with all its related entities (introduction, targets, assignments, schedule items, medical plan, locations).
+        *   **Update (PUT):** Implements complex transaction logic (`prisma.$transaction`) to manage updates across multiple related tables. This often involves `upsert` for one-to-one relations (like `introduction`, `medicalPlan`) and `deleteMany` followed by `createMany` for one-to-many relations (like `targets`, `assignments`, `scheduleItems`) to ensure data synchronization.
+        *   **Deletion (DELETE):** Now includes cascading deletes across related tables within a transaction to ensure all associated data is removed.
+        *   **Fetching (GET):** All planning queries now use Prisma's `include` option to fetch the main planning record along with all its related nested data, providing a complete object to the frontend.
+    *   **Impact:** Backend now fully supports the complex relational data model, ensuring data consistency and integrity during all CRUD operations.
+
+*   **Frontend Component Adjustments:**
+    *   **Form Sections:** `IntroductionFormSection`, `TargetsFormSection`, `FunctionsFormSection`, `ScheduleFormSection` were refactored to integrate seamlessly with `react-hook-form`.
+    *   **New Component:** `components/planning/form-sections/details-form-section.tsx` was introduced to consolidate various details previously scattered or handled by the removed `ComplementaryFormSection`.
+    *   **Removed Component:** `components/planning/form-sections/complementary-form-section.tsx` was deleted as its functionality was absorbed by the new relational structure and form management.
+    *   **Display Components:** `OperationalPlanningDisplay` and `OperationalPlanningPDFView` were updated to correctly render data from the new relational structure, accessing properties directly from related objects rather than parsing JSONB.
+    *   **Data Fetching Hooks:** `useOperationalPlanningForm` was completely rewritten to wrap `react-hook-form` and handle data mapping. `usePlanningSelectData` was extended to fetch `Location` data.
+    *   **Type Definitions:** `types/operational-planning.ts` was completely revamped to reflect the new Prisma models and their relations, providing accurate type safety throughout the frontend.
+
+*   **Prisma Accelerate Integration:**
+    *   `lib/prisma.ts` was updated to include `@prisma/extension-accelerate`, indicating preparation for potential future use of Prisma Accelerate for improved database performance.
+
+### 8.8 Bug Fixes & Data Integrity
+
+*   **"Uncontrolled to Controlled Input" Error (Targets Tab):**
+    *   **Problem:** Input fields for "coordenadas" and "descrição" in the Targets tab were causing React's "uncontrolled to controlled" error due to `undefined` initial values.
+    *   **Solution:** Explicitly initialized `coordinates` and `description` to empty strings (`''`) in the `blankTarget()` helper function within `hooks/use-operational-planning-form.ts`.
+
+*   **Hardcoded `responsibleName` on Planning Creation:**
+    *   **Problem:** The `responsibleName` field was hardcoded to "TBD" when creating new plannings, instead of using the authenticated user's name. Additionally, plannings were being saved without an `id` due to an empty string being passed to Prisma.
+    *   **Solution:**
+        *   Modified `pages/api/plannings/index.ts` to fetch the authenticated user's name from the database and use it for `responsibleName`.
+        *   Used an `omit` utility function (added to `lib/utils.ts`) in `app/planejamento/page.tsx` to ensure the `id` field is completely omitted when sending new planning data to the API, allowing Prisma to generate a UUID.
+*   
+

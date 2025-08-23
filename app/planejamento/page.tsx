@@ -5,7 +5,6 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PermissionGuard } from "@/components/auth/permission-guard";
-import { RouteGuard } from "@/components/auth/route-guard";
 
 import { OperationalPlanningFormModal } from "@/components/planning/operational-planning-form-modal";
 import { PlanningTable } from "@/components/planning/planning-table";
@@ -26,6 +25,7 @@ import {
   updateOperationalPlanning,
 } from "@/lib/operational-planning-management";
 import type { OperationalPlanning } from "@/types/operational-planning";
+import type { PlanningFormData } from "@/hooks/use-operational-planning-form";
 
 export default function PlanningPage() {
   const { user, hasPermission, logAccess } = usePermissions();
@@ -57,14 +57,20 @@ export default function PlanningPage() {
   });
 
   const { mutate: savePlanning, isPending: isSubmitting } = useMutation({
-    mutationFn: async (data: OperationalPlanning) => {
+    mutationFn: async (data: PlanningFormData) => {
       if (!user) throw new Error("Usuário não autenticado.");
-      const isEditing = !!editingPlanning;
-      if (isEditing) {
+
+      const payload: PlanningFormData = {
+        ...data,
+
+        responsibleId: user.id,
+      };
+
+      if (editingPlanning) {
         if (!editingPlanning.id) throw new Error("ID do planejamento inválido.");
-        return updateOperationalPlanning(editingPlanning.id, data);
+        return updateOperationalPlanning(editingPlanning.id, payload);
       }
-      return createOperationalPlanning(data, user.name);
+      return createOperationalPlanning(payload);
     },
     onMutate: async (newData) => {
       await queryClient.cancelQueries({ queryKey: ["plannings"] });
@@ -82,22 +88,19 @@ export default function PlanningPage() {
           (old = []) =>
             old.map((planning) =>
               planning.id === editingPlanning.id
-                ? { ...planning, ...newData }
+                ? { ...planning, ...newData as any } // Cast to any for optimistic update simplicity
                 : planning,
             ),
         );
       } else {
         logAccess("CREATE_PLANNING_OPTIMISTIC", `/planejamento`, true);
         const optimisticPlanning: OperationalPlanning = {
-          ...newData,
+          ...newData as any, // Cast to any for optimistic update simplicity
           id: `optimistic-${Date.now()}`,
           createdAt: new Date(),
           updatedAt: new Date(),
-          createdBy: user?.id ?? "temp-id",
+          createdById: user?.id ?? "temp-id",
           responsibleId: user?.id ?? "temp-id",
-          responsibleName: user?.name ?? "Temp User",
-          status: newData.status || "Elaboração",
-          priority: newData.priority || "Média",
           isOptimistic: true,
         };
         queryClient.setQueryData<OperationalPlanning[]>(
@@ -131,8 +134,7 @@ export default function PlanningPage() {
         // This is crucial: update the editingPlanning state with the fresh data
         // from the server to ensure the form re-initializes with the correct data
         // if the user opens it again.
-        const newPlanning = JSON.parse(JSON.stringify(data));
-        setEditingPlanning(newPlanning);
+        setEditingPlanning(data);
       }
 
       const action = isEditing ? "UPDATE_PLANNING" : "CREATE_PLANNING";
@@ -201,66 +203,60 @@ export default function PlanningPage() {
     setIsFormModalOpen(true);
   };
 
-  
-
   return (
-    <RouteGuard requiredPermissions={["planning.view"]}>
-      <div className="min-h-screen bg-muted/30 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="outline" onClick={() => router.push("/")} size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-primary">Planejamento Operacional</h1>
-              <p className="text-muted-foreground">
-                {canEdit ? "Gerencie seus planejamentos operacionais" : "Visualize os planejamentos operacionais"}
-              </p>
-            </div>
+    <div className="min-h-screen bg-muted/30 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" onClick={() => router.push("/")} size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-primary">Planejamento Operacional</h1>
+            <p className="text-muted-foreground">
+              {canEdit ? "Gerencie seus planejamentos operacionais" : "Visualize os planejamentos operacionais"}
+            </p>
           </div>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Planejamentos</CardTitle>
-                  <CardDescription>
-                    {canEdit
-                      ? "Lista de todos os planejamentos operacionais. Você pode criar, editar e gerenciar planejamentos."
-                      : "Lista de todos os planejamentos operacionais para visualização."}
-                  </CardDescription>
-                </div>
-                <PermissionGuard permission="planning.create">
-                  <Button onClick={handleCreatePlanning}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Planejamento
-                  </Button>
-                </PermissionGuard>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <PlanningTable
-                plannings={plannings}
-                onEditPlanning={handleEditPlanning}
-                onDeletePlanning={removePlanning}
-                canEdit={canEdit}
-                isLoading={isLoading}
-              />
-            </CardContent>
-          </Card>
-
-          <OperationalPlanningFormModal
-            isOpen={isFormModalOpen}
-            onClose={() => setIsFormModalOpen(false)}
-            onSubmit={savePlanning}
-            planning={editingPlanning}
-            isLoading={isSubmitting}
-          />
-
-          
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Planejamentos</CardTitle>
+                <CardDescription>
+                  {canEdit
+                    ? "Lista de todos os planejamentos operacionais. Você pode criar, editar e gerenciar planejamentos."
+                    : "Lista de todos os planejamentos operacionais para visualização."}
+                </CardDescription>
+              </div>
+              <PermissionGuard permission="planning.create">
+                <Button onClick={handleCreatePlanning}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Planejamento
+                </Button>
+              </PermissionGuard>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PlanningTable
+              plannings={plannings}
+              onEditPlanning={handleEditPlanning}
+              onDeletePlanning={removePlanning}
+              canEdit={canEdit}
+              isLoading={isLoading}
+            />
+          </CardContent>
+        </Card>
+
+        <OperationalPlanningFormModal
+          isOpen={isFormModalOpen}
+          onClose={() => setIsFormModalOpen(false)}
+          onSubmit={savePlanning}
+          planning={editingPlanning}
+          isLoading={isSubmitting}
+        />
       </div>
-    </RouteGuard>
+    </div>
   );
 }

@@ -53,7 +53,7 @@ export default function OperationalPlanningDetailPage() {
     if (planning?.createdBy) {
       const fetchCreator = async () => {
         try {
-          const user = await getUserById(planning.createdBy);
+          const user = await getUserById(planning.createdBy.id);
           setCreatorName(user?.name || "Desconhecido");
         } catch (error) {
           console.error("Failed to fetch creator name:", error);
@@ -73,7 +73,7 @@ export default function OperationalPlanningDetailPage() {
     try {
       await generatePdf(
         <OperationalPlanningPDFView planning={planning} />,
-        `planejamento-${planning.introduction.serviceOrderNumber}.pdf`,
+        `planejamento-${planning.introduction?.serviceOrderNumber}.pdf`,
       );
     } finally {
       setIsGeneratingPdf(false);
@@ -101,14 +101,14 @@ export default function OperationalPlanningDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-3xl font-bold text-primary">
-            {planning.introduction.operationType} -
-            {planning.introduction.serviceOrderNumber}
+            {planning.introduction?.operationType} -
+            {planning.introduction?.serviceOrderNumber}
           </h1>
         </div>
         <p className="text-muted-foreground mb-6">
-          {planning.introduction.operationDate} às
-          {planning.introduction.operationTime} -
-          {planning.introduction.supportUnit}
+          {planning.introduction?.operationDate} às
+          {planning.introduction?.operationTime} -
+          {planning.introduction?.supportUnit}
         </p>
 
 

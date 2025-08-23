@@ -142,7 +142,7 @@ export function PlanningTable({
                   </div>
                 </div>
               </TableCell>
-              <TableCell>{planning.responsibleName}</TableCell>
+              <TableCell>{planning.introduction?.serviceOrderNumber}</TableCell>
               <TableCell>
                 <Badge variant={getStatusBadgeVariant(planning.status)}>
                   {getStatusLabel(planning.status)}
@@ -190,7 +190,7 @@ export function PlanningTable({
                             </AlertDialogTitle>
                             <AlertDialogDescription>
                               Tem certeza que deseja excluir o planejamento "
-                              {planning.introduction.serviceOrderNumber}"? Esta
+                              {planning.introduction?.serviceOrderNumber}"? Esta
                               ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>

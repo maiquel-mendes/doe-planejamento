@@ -12,7 +12,7 @@ const publicRoutes = ['/login']; // Add any other public routes here
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const pathname = usePathname();
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicRoute = pathname ? publicRoutes.includes(pathname) : false;
 
   if (isPublicRoute) {
     return <>{children}</>;
