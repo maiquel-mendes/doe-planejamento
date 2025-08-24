@@ -258,5 +258,35 @@ This is the most significant recent change, moving from a JSONB-heavy data model
     *   **Solution:**
         *   Modified `pages/api/plannings/index.ts` to fetch the authenticated user's name from the database and use it for `responsibleName`.
         *   Used an `omit` utility function (added to `lib/utils.ts`) in `app/planejamento/page.tsx` to ensure the `id` field is completely omitted when sending new planning data to the API, allowing Prisma to generate a UUID.
-*   
+*
 
+### 8.10 "Quadro de Funções" Rules and Fixes
+
+This section details a set of recent, interconnected changes to the "Quadro de Funções" form section to improve business rule enforcement, fix bugs, and enhance performance.
+
+*   **Business Rule: First Function must be 'entrada'**
+    *   **Problem**: A new business rule was needed to ensure the first function assigned to any operator was from the 'entrada' (entry) category.
+    *   **Solution**: Implemented conditional logic in `components/planning/form-sections/functions-form-section.tsx`. If an operator has no functions, the dropdown list now exclusively shows functions where `category === 'entrada'`. For subsequent function assignments, the original logic of filtering by conflicting categories applies.
+
+*   **Business Rule: Prevent Duplicate Operator Assignments**
+    *   **Problem**: It was possible to select the same operator in multiple assignment rows within the same operational plan.
+    *   **Solution**: Added logic to `FunctionsFormSection` to watch the entire `assignments` array and compute a `Set` of all currently selected user IDs. This set is passed to each `AssignmentRow`, which then filters its own operator dropdown to exclude already-selected users, preventing duplicates.
+
+*   **Bug Fix: Case-Sensitivity in Category Filter**
+    *   **Problem**: The "First Function must be 'entrada'" rule was not working because the code was checking for the category `'Entrada'` (capitalized), while the database stores it as `'entrada'` (lowercase).
+    *   **Solution**: Corrected the filter condition to use the lowercase `'entrada'`, fixing the bug.
+
+*   **Performance and Type Safety Enhancements**
+    *   **Problem**: The `AssignmentRow` component was subject to unnecessary re-renders, and a key prop (`control`) was typed as `any`.
+    *   **Solution**: Wrapped the `AssignmentRow` component in `React.memo` and memoized expensive calculations using the `useMemo` hook to improve performance. Corrected the `control` prop's type to use `Control<PlanningFormData>` from `react-hook-form` for better type safety.
+
+## 9. Planned Enhancements
+
+This section outlines approved, upcoming features and refactorings.
+
+### 9.1 Communications Plan Section
+
+*   **Requirement**: Re-introduce the "Comunicações" (Communications) section, which was lost during a previous database refactoring.
+*   **Proposed Solution**:
+    *   **Backend**: A new `CommunicationsPlan` model will be added to `prisma/schema.prisma` with a one-to-one relationship to `OperationalPlanning`. It will store structured data like radio channels and emergency contacts.
+    *   **Frontend**: A new `communications-form-section.tsx` component will be created to manage the UI for this data within the main planning form, consistent with other form sections.

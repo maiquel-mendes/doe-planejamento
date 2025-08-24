@@ -1,5 +1,5 @@
 import { Plus, X } from "lucide-react";
-import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { useFieldArray, useFormContext, useWatch, Controller, type Control } from 'react-hook-form';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import type { PlanningFormData } from '@/hooks/use-operational-planning-form';
 import type { OperationalFunction, Vehicle } from "@/types/operational-planning";
 import type { User } from "@/types/auth";
-import { Controller } from "react-hook-form";
+import { memo, useMemo } from "react";
 
 interface FunctionsFormSectionProps {
   users: User[];
@@ -29,31 +29,46 @@ interface FunctionsFormSectionProps {
 }
 
 interface AssignmentRowProps {
-  control: any; // useFormContext's control
+  control: Control<PlanningFormData>;
   index: number;
   remove: (index: number) => void;
   users: User[];
   functions: OperationalFunction[];
   vehicles: Vehicle[];
+  selectedUserIds: Set<string>;
 }
 
-function AssignmentRow({ control, index, remove, users, functions, vehicles }: AssignmentRowProps) {
+const AssignmentRow = memo(function AssignmentRow({ control, index, remove, users, functions, vehicles, selectedUserIds }: AssignmentRowProps) {
   const assignment = useWatch({ control, name: `assignments.${index}` });
-  const assignedFunctions = functions.filter((f: OperationalFunction) => assignment.functionIds?.includes(f.id));
-  const assignedCategories = assignedFunctions.map((f: OperationalFunction) => f.category);
+  const functionIds = assignment.functionIds || [];
 
-  const availableFunctions = functions.filter((f: OperationalFunction) => !assignedCategories.includes(f.category));
+  const availableUsers = useMemo(() => {
+    return users.filter(user => !selectedUserIds.has(user.id) || user.id === assignment.userId);
+  }, [users, selectedUserIds, assignment.userId]);
+
+  const { assignedFunctions, availableFunctions } = useMemo(() => {
+    const assigned = functions.filter((f: OperationalFunction) => functionIds.includes(f.id));
+    const assignedCategories = assigned.map((f: OperationalFunction) => f.category);
+
+    let available;
+    if (functionIds.length === 0) {
+      // FIX: Use lowercase 'entrada' to match seed data
+      available = functions.filter(f => f.category === 'entrada');
+    } else {
+      available = functions.filter((f: OperationalFunction) => !assignedCategories.includes(f.category));
+    }
+    
+    return { assignedFunctions: assigned, availableFunctions: available };
+  }, [functionIds, functions]);
 
   const { setValue } = useFormContext<PlanningFormData>();
 
   const handleAddFunction = (functionId: string) => {
-    const currentIds = assignment.functionIds || [];
-    setValue(`assignments.${index}.functionIds`, [...currentIds, functionId]);
+    setValue(`assignments.${index}.functionIds`, [...functionIds, functionId]);
   };
 
   const handleRemoveFunction = (functionId: string) => {
-    const currentIds = assignment.functionIds || [];
-    setValue(`assignments.${index}.functionIds`, currentIds.filter((id: string) => id !== functionId));
+    setValue(`assignments.${index}.functionIds`, functionIds.filter((id: string) => id !== functionId));
   };
 
   return (
@@ -68,7 +83,7 @@ function AssignmentRow({ control, index, remove, users, functions, vehicles }: A
               render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value || ''}>
                   <SelectTrigger><SelectValue placeholder="Selecione o Operador" /></SelectTrigger>
-                  <SelectContent>{users.map((user: User) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableUsers.map((user: User) => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}</SelectContent>
                 </Select>
               )}
             />
@@ -102,7 +117,7 @@ function AssignmentRow({ control, index, remove, users, functions, vehicles }: A
       </div>
       <div className="grid gap-2">
         <Select onValueChange={handleAddFunction} value="">
-          <SelectTrigger><SelectValue placeholder="Adicionar nova função..." /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={availableFunctions.length > 0 ? "Adicionar nova função..." : "Nenhuma função disponível"} /></SelectTrigger>
           <SelectContent>
             {availableFunctions.map((func: OperationalFunction) => (
               <SelectItem key={func.id} value={func.id}>{func.name} ({func.category})</SelectItem>
@@ -112,7 +127,7 @@ function AssignmentRow({ control, index, remove, users, functions, vehicles }: A
       </div>
     </div>
   );
-}
+});
 
 export function FunctionsFormSection({ users, functions, vehicles }: FunctionsFormSectionProps) {
   const { control } = useFormContext<PlanningFormData>();
@@ -120,6 +135,11 @@ export function FunctionsFormSection({ users, functions, vehicles }: FunctionsFo
     control,
     name: 'assignments',
   });
+
+  const assignments = useWatch({ control, name: 'assignments' });
+  const selectedUserIds = useMemo(() => 
+    new Set(assignments?.map((a: { userId: string }) => a.userId).filter(Boolean) || [])
+  , [assignments]);
 
   const handleAddAssignment = () => {
     append({ userId: '', vehicleId: null, functionIds: [] });
@@ -136,7 +156,7 @@ export function FunctionsFormSection({ users, functions, vehicles }: FunctionsFo
           {fields.map((field, index) => (
             <AssignmentRow 
               key={field.id} 
-              {...{ control, index, remove, users, functions, vehicles }} 
+              {...{ control, index, remove, users, functions, vehicles, selectedUserIds }} 
             />
           ))}
         </div>

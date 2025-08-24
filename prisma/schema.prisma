@@ -118,9 +118,7 @@ model PlanningAssignment {
   planningId    String              @map("planning_id")
   userId        String              @map("user_id")
   vehicleId     String?             @map("vehicle_id")
-  medicalPlanId String?             @map("medical_plan_id")
   functions     OperationalFunction[] // This is the new many-to-many relation
-  medicalPlan   MedicalPlan?        @relation(fields: [medicalPlanId], references: [id])
   planning      OperationalPlanning @relation(fields: [planningId], references: [id])
   user          User                @relation(fields: [userId], references: [id])
   vehicle       Vehicle?            @relation(fields: [vehicleId], references: [id])
@@ -148,7 +146,7 @@ model MedicalPlan {
   ambulanceVehicle   Vehicle              @relation(fields: [ambulanceVehicleId], references: [id])
   hospitalLocation   Location             @relation(fields: [hospitalLocationId], references: [id])
   planning           OperationalPlanning  @relation(fields: [planningId], references: [id])
-  aphAssignments     PlanningAssignment[]
+
 
   @@map("medical_plans")
 }

@@ -53,6 +53,40 @@ const styles = StyleSheet.create({
     width: '48%',
     marginBottom: 10,
   },
+  table: {
+    display: 'flex',
+    flexDirection: 'column',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+    minHeight: 24,
+  },
+  tableHeader: {
+    backgroundColor: '#e8ecef',
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  tableCell: {
+    flex: 1,
+    padding: 6,
+    fontSize: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#333333',
+  },
+  tableCellLast: {
+    flex: 1,
+    padding: 6,
+    fontSize: 10,
+  },
+  headerText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
 });
 
 interface OperationalPlanningPDFViewProps {
@@ -113,15 +147,26 @@ export const OperationalPlanningPDFView: React.FC<OperationalPlanningPDFViewProp
         {planning.assignments && planning.assignments.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.subtitle}>3. Quadro de Funções</Text>
-            {planning.assignments.map((assignment) => (
-              <View key={assignment.id} style={styles.listItem}>
-                <View style={styles.bullet} />
-                <Text style={styles.text}>
-                  {assignment.user.name} - {(assignment.functions as OperationalFunction[]).map(f => f.name).join(', ')}
-                  {assignment.vehicle ? ` (${assignment.vehicle.prefix})` : ''}
-                </Text>
+            <View style={styles.table}>
+              {/* Table Header */}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableCell, styles.headerText]}>Operador</Text>
+                <Text style={[styles.tableCell, styles.headerText]}>Funções</Text>
+                <Text style={[styles.tableCellLast, styles.headerText]}>Viatura</Text>
               </View>
-            ))}
+              {/* Table Rows */}
+              {planning.assignments.map((assignment) => (
+                <View key={assignment.id} style={styles.tableRow}>
+                  <Text style={styles.tableCell}>{assignment.user.name}</Text>
+                  <Text style={styles.tableCell}>
+                    {(assignment.functions as OperationalFunction[]).map(f => f.name).join(' / ')}
+                  </Text>
+                  <Text style={styles.tableCellLast}>
+                    {assignment.vehicle ? assignment.vehicle.prefix : '-'}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
@@ -153,7 +198,16 @@ export const OperationalPlanningPDFView: React.FC<OperationalPlanningPDFViewProp
           <View style={styles.section}>
             <Text style={styles.subtitle}>6. Plano Médico</Text>
             <Text style={styles.text}>Procedimentos: {planning.medicalPlan.procedures || 'N/A'}</Text>
-            {/* You can add more details from medicalPlan here if needed */}
+            {planning.assignments
+              .filter(assignment => (assignment.functions as OperationalFunction[]).some(f => f.name === 'APH'))
+              .map(item => (
+                <View key={item.id} style={styles.listItem}>
+                  <View style={styles.bullet} />
+                  <Text style={styles.text}>
+                    {item.user.name} - APH
+                  </Text>
+                </View>
+              ))}
           </View>
         )}
 

@@ -60,9 +60,11 @@ async function main() {
 
   const funcArrombamento = await prisma.operationalFunction.upsert({
     where: { name: 'Arrombamento Mecânico' },
-    update: {},
+    update: {
+      name: 'Arrombador Mecânico',
+    },
     create: {
-      name: 'Arrombamento Mecânico',
+      name: 'Arrombador Mecânico',
       description: 'Especialista em arrombamento e entrada forçada',
       category: 'especializada',
       isActive: true,
@@ -75,6 +77,28 @@ async function main() {
     create: {
       name: 'Escudo/Taser',
       description: 'Operador com escudo balístico e arma de eletrochoque',
+      category: 'entrada',
+      isActive: true,
+    },
+  });
+  const funcMaosLivres = await prisma.operationalFunction.upsert({
+    where: { name: 'Mãos Livres' },
+    update: {},
+    create: {
+      name: 'Mãos Livres',
+      description:
+        'Operador com arma curta responsavel pelo algemamento e possivel combate corpo a corpo',
+      category: 'entrada',
+      isActive: true,
+    },
+  });
+
+  const funcApoioFogo = await prisma.operationalFunction.upsert({
+    where: { name: 'Apoio de Fogo' },
+    update: {},
+    create: {
+      name: 'Apoio de Fogo',
+      description: 'Operador com arma longa maior poder de fogo',
       category: 'entrada',
       isActive: true,
     },
@@ -95,6 +119,8 @@ async function main() {
     funcCoordMotorista,
     funcArrombamento,
     funcEscudoTaser,
+    funcMaosLivres,
+    funcApoioFogo,
     funcAPH,
   });
 

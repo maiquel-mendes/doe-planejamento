@@ -45,7 +45,6 @@ const operationalPlanningWithRelations = {
       include: {
         hospitalLocation: true,
         ambulanceVehicle: true,
-        aphAssignments: true,
       },
     },
     createdBy: true,

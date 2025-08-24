@@ -197,7 +197,7 @@ export function OperationalPlanningDisplay({
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -206,10 +206,52 @@ export function OperationalPlanningDisplay({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground mb-2">
               {planning.medicalPlan?.procedures || "Nenhum procedimento médico definido."}
             </p>
-            {/* Future: Display APH assignments, hospital, etc. */}
+            {planning.assignments && planning.assignments.length > 0 && (() => {
+              const aphOperators = planning.assignments
+                .filter(assignment => (assignment.functions as OperationalFunction[]).some(f => f.name === 'APH'));
+              return aphOperators.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="text-sm font-medium">Socorristas APH
+                    :</span>
+                  {aphOperators.map((assignment) => (
+                    <Badge key={assignment.id} variant="secondary">
+                      {assignment.user.name}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-2">Nenhum socorrista APH atribuído.</p>
+              );
+            })()}
+            {planning.medicalPlan?.hospitalLocation && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin className="h-4 w-4" />
+                  <span className="font-medium">Hospital de Referência:</span>
+                </div>
+                <p className="text-sm">{planning.medicalPlan.hospitalLocation.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {planning.medicalPlan.hospitalLocation.address || "Endereço não informado"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Lat: {planning.medicalPlan.hospitalLocation.latitude}, Lon: {planning.medicalPlan.hospitalLocation.longitude}
+                </p>
+              </div>
+            )}
+            {planning.medicalPlan?.ambulanceVehicle && (
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="h-4 w-4" /> {/* Placeholder icon */}
+                  <span className="font-medium">Viatura Ambulância:</span>
+                </div>
+                <p className="text-sm">
+                  {planning.medicalPlan.ambulanceVehicle.prefix} - {planning.medicalPlan.ambulanceVehicle.model}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
