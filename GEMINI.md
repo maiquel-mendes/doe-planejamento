@@ -194,7 +194,7 @@ This section details significant improvements and solutions implemented recently
     *   **Dynamic Population:** The "Socorristas" field in the "APH – Médico" section of the planning form is now automatically populated based on operators assigned the "APH" function in the "Quadro de Funções" tab.
     *   **Multi-Name Display:** The field now displays all names of operators with the "APH" function, concatenated into a single string (e.g., "Nome1, Nome2").
     *   **Data Structure Update:** `medical.medicId` in `types/operational-planning.ts` was updated from `string` to `string[]` to store IDs of all APH operators.
-    *   **UI Enhancement:** In the planning form, the "Socorristas" field is now a read-only label that displays the names as `Badge` components for better visual clarity. A message is shown if no APH operator is defined.
+    *   **UI Enhancement:** In the planning form, the "Socorristas" field is now a read-only label thatS displays the names as `Badge` components for better visual clarity. A message is shown if no APH operator is defined.
     *   **PDF Reflection:** The `components/planning/operational-planning-pdf-view.tsx` was updated to display all APH medic names in a list format.
 
 *   **Component Reusability for Planning Details:**
@@ -303,6 +303,16 @@ This section details a set of recent, interconnected changes to the "Quadro de F
     *   A `tailwind.config.js` file has been created in the project root with `darkMode: 'class'` to enable class-based dark mode styling.
 *   **Theme Toggle Component:**
     *   A reusable `ThemeToggle` component has been created in `components/ui/theme-toggle.tsx` to allow users to switch between light, dark, and system themes.
+
+### 8.13 Responsive Header Implementation
+
+*   **`MainHeader` Component:**
+    *   A new `MainHeader` component has been created in `components/layout/main-header.tsx`.
+    *   This component provides a modern, responsive header with application branding, desktop navigation, user dropdown (displaying user name and email, with a logout option), and a mobile hamburger menu.
+*   **Integration with `ProtectedLayout`:**
+    *   The `MainHeader` has been integrated into `components/auth/protected-layout.tsx`, ensuring it is displayed on all authenticated routes.
+*   **Shadcn/ui Component Integration:**
+    *   Necessary Shadcn/ui components (`Button`, `DropdownMenu`, `Sheet`) have been added to the project to support the header's UI and functionality.
 
 ## 9. Planned Enhancements
 

@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 import { RouteGuard } from './route-guard';
+import { MainHeader } from '@/components/layout/main-header';
 
 interface ProtectedLayoutProps {
   children: ReactNode;
@@ -18,5 +19,12 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     return <>{children}</>;
   }
 
-  return <RouteGuard>{children}</RouteGuard>;
+  return (
+    <RouteGuard>
+      <div className="flex min-h-screen flex-col">
+        <MainHeader />
+        <main className="flex-1 flex flex-col">{children}</main>
+      </div>
+    </RouteGuard>
+  );
 }
