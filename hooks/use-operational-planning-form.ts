@@ -33,6 +33,7 @@ const planningSchema = z.object({
     targetName: z.string(),
     description: z.string().optional(),
     location: locationSchema,
+    images: z.array(z.object({ url: z.string(), publicId: z.string().optional() })).optional(),
   })).optional(),
   assignments: z.array(z.object({
     id: z.string().optional(),
@@ -50,6 +51,11 @@ const planningSchema = z.object({
     procedures: z.string().optional(),
     hospitalLocation: locationSchema,
     ambulanceVehicleId: z.string().min(1, "A viatura de ambulância é obrigatória."),
+  }).optional(),
+  communicationsPlan: z.object({
+    id: z.string().optional(),
+    operatorChannel: z.string().min(1, "O canal de operadores é obrigatório."),
+    vehicleChannel: z.string().optional(),
   }).optional(),
   responsibleId: z.string(),
 });
@@ -87,6 +93,10 @@ const defaultValues: PlanningFormData = {
     hospitalLocation: blankLocation(),
     ambulanceVehicleId: '',
   },
+  communicationsPlan: {
+    operatorChannel: '',
+    vehicleChannel: '',
+  },
   responsibleId: '',
 };
 
@@ -101,6 +111,7 @@ const mapPlanningToFormData = (planning: OperationalPlanningWithRelations): Plan
     targetName: t.targetName,
     description: t.description || '',
     location: t.location,
+    images: t.images?.map(img => ({ id: img.id, url: img.url, publicId: img.publicId })) || [],
   })),
   assignments: planning.assignments.map(a => ({
     id: a.id,
@@ -118,6 +129,11 @@ const mapPlanningToFormData = (planning: OperationalPlanningWithRelations): Plan
     procedures: planning.medicalPlan.procedures,
     hospitalLocation: planning.medicalPlan.hospitalLocation,
     ambulanceVehicleId: planning.medicalPlan.ambulanceVehicleId,
+  } : undefined,
+  communicationsPlan: planning.communicationsPlan ? { 
+    id: planning.communicationsPlan.id,
+    operatorChannel: planning.communicationsPlan.operatorChannel,
+    vehicleChannel: planning.communicationsPlan.vehicleChannel || '',
   } : undefined,
   responsibleId: planning.responsibleId,
 });

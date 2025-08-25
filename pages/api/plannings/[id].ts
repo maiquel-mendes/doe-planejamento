@@ -4,11 +4,13 @@ import {
   authenticateToken,
   type AuthenticatedRequest,
 } from '@/lib/auth-middleware';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/generated/prisma';
 
-const includeAllRelations = {
+import type { Location } from '@/lib/generated/prisma';
+
+const includeAllRelations: Prisma.OperationalPlanningInclude = {
   introduction: true,
-  targets: { include: { location: true } },
+  targets: { include: { location: true, images: true } },
   assignments: { include: { user: true, functions: true, vehicle: true } },
   scheduleItems: true,
   medicalPlan: {
@@ -19,6 +21,7 @@ const includeAllRelations = {
   },
   createdBy: true,
   responsible: true,
+  communicationsPlan: true,
 };
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -54,6 +57,9 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       ...mainPlanningData
     } = req.body;
 
+    // Define a specific type for schedule items from the request body
+    type ScheduleItemData = { time: string; activity: string };
+
     try {
       const updatedPlanning = await prisma.$transaction(async (tx) => {
         // 1. Update main planning data and its direct 1-to-1 relations
@@ -67,10 +73,11 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
 
         // 2. Handle Medical Plan and its nested location
         if (medicalPlan) {
+          const { id: locId, ...locationData } = medicalPlan.hospitalLocation as Location;
           const hospitalLocation = await tx.location.upsert({
-            where: { id: medicalPlan.hospitalLocation?.id || 'undefined' },
-            create: { ...(medicalPlan.hospitalLocation as any), id: undefined },
-            update: { ...(medicalPlan.hospitalLocation as any) },
+            where: { id: locId || 'undefined' },
+            create: locationData,
+            update: locationData,
           });
 
           await tx.medicalPlan.upsert({
@@ -93,22 +100,27 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         await tx.planningTarget.deleteMany({ where: { planningId: id } });
         if (targets && targets.length > 0) {
           for (const target of targets) {
-            if (target.location?.name) {
-              const location = await tx.location.upsert({
-                where: { id: target.location.id || 'undefined' },
-                create: { ...target.location, id: undefined },
-                update: { ...target.location },
-              });
+            const { id: locId, ...locationData } = target.location as Location;
+            const location = await tx.location.upsert({
+              where: { id: locId || 'undefined' },
+              create: locationData,
+              update: locationData,
+            });
 
-              await tx.planningTarget.create({
-                data: {
-                  planningId: id,
-                  targetName: target.targetName,
-                  description: target.description,
-                  locationId: location.id,
+            await tx.planningTarget.create({
+              data: {
+                planningId: id,
+                targetName: target.targetName,
+                description: target.description,
+                locationId: location.id,
+                images: {
+                  create: target.images?.map((image: { url: string; publicId: string }) => ({
+                    url: image.url,
+                    publicId: image.publicId,
+                  })) || [],
                 },
-              });
-            }
+              },
+            });
           }
         }
 
@@ -133,7 +145,11 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         await tx.planningScheduleItem.deleteMany({ where: { planningId: id } });
         if (scheduleItems && scheduleItems.length > 0) {
           await tx.planningScheduleItem.createMany({
-            data: scheduleItems.map((item: any) => ({ id: undefined, time: new Date(item.time), activity: item.activity, planningId: id })),
+            data: scheduleItems.map((item: ScheduleItemData) => ({ 
+              time: new Date(item.time), 
+              activity: item.activity, 
+              planningId: id 
+            })),
           });
         }
 

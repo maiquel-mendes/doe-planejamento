@@ -4,11 +4,12 @@ import {
   authenticateToken,
   type AuthenticatedRequest,
 } from '@/lib/auth-middleware';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/lib/generated/prisma';
+import type { Location } from '@/lib/generated/prisma';
 
-const includeAllRelations = {
+const includeAllRelations: Prisma.OperationalPlanningInclude = {
   introduction: true,
-  targets: { include: { location: true } },
+  targets: { include: { location: true, images: true } }, // Added images: true
   assignments: { include: { user: true, functions: true, vehicle: true } },
   scheduleItems: true,
   medicalPlan: {
@@ -19,6 +20,7 @@ const includeAllRelations = {
   },
   createdBy: true,
   responsible: true,
+  communicationsPlan: true,
 };
 
 async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
@@ -49,6 +51,20 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       ...mainPlanningData
     } = req.body;
 
+    // Define specific types for request body data
+    type TargetData = {
+      targetName: string;
+      description?: string;
+      location: Location;
+      images?: { url: string; publicId: string }[];
+    };
+    type ScheduleItemData = { time: string; activity: string };
+    type AssignmentData = {
+      userId: string;
+      vehicleId?: string | null;
+      functionIds: string[];
+    };
+
     try {
       const createdPlanning = await prisma.operationalPlanning.create({
         data: {
@@ -57,7 +73,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
           responsible: { connect: { id: user.id } },
           ...(introduction && { introduction: { create: introduction } }),
           ...(targets && { targets: {
-            create: targets.map((target: any) => ({
+            create: targets.map((target: TargetData) => ({
               targetName: target.targetName,
               description: target.description,
               location: {
@@ -71,18 +87,24 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
                   },
                 },
               },
+              images: {
+                create: target.images?.map(img => ({ url: img.url, publicId: img.publicId })) || [],
+              },
             })),
           }}),
-                    ...(scheduleItems && {
+          ...(scheduleItems && {
             scheduleItems: {
-              create: scheduleItems.map((s: any) => ({
-                id: undefined,
+              create: scheduleItems.map((s: ScheduleItemData) => ({
                 time: new Date(s.time),
                 activity: s.activity,
               })),
             },
           }),
-          ...(assignments && { assignments: { create: assignments } }),
+          ...(assignments && { assignments: { create: assignments.map((a: AssignmentData) => ({
+            userId: a.userId,
+            vehicleId: a.vehicleId,
+            functions: { connect: a.functionIds.map(fid => ({ id: fid })) },
+          })) } }),
           ...(medicalPlan && {
             medicalPlan: {
               create: {

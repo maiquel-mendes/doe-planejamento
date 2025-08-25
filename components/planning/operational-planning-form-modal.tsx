@@ -19,6 +19,7 @@ import { TargetsFormSection } from "./form-sections/targets-form-section";
 import { FunctionsFormSection } from "./form-sections/functions-form-section";
 import { ScheduleFormSection } from "./form-sections/schedule-form-section";
 import { DetailsFormSection } from "./form-sections/details-form-section";
+import { CommunicationsFormSection } from './form-sections/communications-form-section';
 
 interface OperationalPlanningFormModalProps {
   isOpen: boolean;
@@ -63,10 +64,11 @@ export function OperationalPlanningFormModal({
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)}>
             <Tabs defaultValue="introducao" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="introducao">Introdução</TabsTrigger>
                 <TabsTrigger value="alvos">Alvos</TabsTrigger>
                 <TabsTrigger value="funcoes">Funções</TabsTrigger>
+                <TabsTrigger value="comunicacoes">Comunicações</TabsTrigger>
                 <TabsTrigger value="horarios">Horários</TabsTrigger>
                 <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
               </TabsList>
@@ -80,6 +82,9 @@ export function OperationalPlanningFormModal({
                 </TabsContent>
                 <TabsContent value="funcoes">
                   <FunctionsFormSection users={users} functions={functions} vehicles={vehicles} />
+                </TabsContent>
+                <TabsContent value="comunicacoes">
+                  <CommunicationsFormSection />
                 </TabsContent>
                 <TabsContent value="horarios">
                   <ScheduleFormSection />

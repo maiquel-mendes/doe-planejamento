@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -100,9 +101,9 @@ export function OperationalPlanningDisplay({
                   <CardDescription>{target.description}</CardDescription>
                 )}
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-4">
                 {target.location && (
-                  <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                  <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <MapPin className="h-4 w-4" />
                       <span className="font-medium">
@@ -113,6 +114,25 @@ export function OperationalPlanningDisplay({
                     <p className="text-xs text-muted-foreground mt-1">
                       Lat: {target.location.latitude}, Lon: {target.location.longitude}
                     </p>
+                  </div>
+                )}
+                {target.images && target.images.length > 0 && (
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <h4 className="text-sm font-medium mb-2">Imagens do Alvo</h4>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                      {target.images.map((image) => (
+                        <div key={image.id} className="relative group aspect-square">
+                          <a href={image.url} target="_blank" rel="noopener noreferrer">
+                            <Image
+                              src={image.url}
+                              alt={image.altText || `Imagem do alvo ${target.targetName}`}
+                              layout="fill"
+                              className="object-cover rounded-md transition-transform group-hover:scale-105"
+                            />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -175,7 +195,6 @@ export function OperationalPlanningDisplay({
                     {new Date(item.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </Badge>
                   <p className="text-sm">{item.activity}</p>
-                  <p className="text-sm text-muted-foreground ml-auto">{item.responsible}</p>
                 </div>
               ))}\
             </div>

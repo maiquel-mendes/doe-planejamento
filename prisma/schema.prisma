@@ -9,21 +9,22 @@ datasource db {
 }
 
 model OperationalPlanning {
-  id            String                 @id @default(cuid())
-  status        String
-  priority      String
-  peculiarities String?
-  createdById   String                 @map("created_by_id")
-  responsibleId String                 @map("responsible_id")
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
-  introduction  IntroductionSection?
-  medicalPlan   MedicalPlan?
-  createdBy     User                   @relation("CreatedPlannings", fields: [createdById], references: [id])
-  responsible   User                   @relation("ResponsibleForPlannings", fields: [responsibleId], references: [id])
-  assignments   PlanningAssignment[]
-  scheduleItems PlanningScheduleItem[]
-  targets       PlanningTarget[]
+  id                 String                 @id @default(cuid())
+  status             String
+  priority           String
+  peculiarities      String?
+  createdById        String                 @map("created_by_id")
+  responsibleId      String                 @map("responsible_id")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  introduction       IntroductionSection?
+  medicalPlan        MedicalPlan?
+  communicationsPlan CommunicationsPlan? // Relação com o plano de comunicações
+  createdBy          User                   @relation("CreatedPlannings", fields: [createdById], references: [id])
+  responsible        User                   @relation("ResponsibleForPlannings", fields: [responsibleId], references: [id])
+  assignments        PlanningAssignment[]
+  scheduleItems      PlanningScheduleItem[]
+  targets            PlanningTarget[]
 
   @@map("operational_plannings")
 }
@@ -52,9 +53,9 @@ model OperationalFunction {
   isActive    Boolean              @default(true) @map("is_active")
   createdAt   DateTime             @default(now()) @map("created_at")
   updatedAt   DateTime             @updatedAt @map("updated_at")
-  assignments PlanningAssignment[] @relation // Add @relation for many-to-many
+  assignments PlanningAssignment[] @relation
 
-  @@map("operational_functions") // Add back the map
+  @@map("operational_functions")
 }
 
 model Vehicle {
@@ -82,6 +83,7 @@ model Location {
   updatedAt              DateTime         @updatedAt @map("updated_at")
   medicalPlansAsHospital MedicalPlan[]
   targets                PlanningTarget[]
+  images                 Image[] // Relação com Imagens
 
   @@map("locations")
 }
@@ -96,7 +98,7 @@ model IntroductionSection {
   operationDate      String              @map("operation_date")
   operationTime      String              @map("operation_time")
   planningId         String              @unique @map("planning_id")
-  planning           OperationalPlanning @relation(fields: [planningId], references: [id])
+  planning           OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
 
   @@map("introduction_sections")
 }
@@ -108,45 +110,44 @@ model PlanningTarget {
   locationId  String              @map("location_id")
   planningId  String              @map("planning_id")
   location    Location            @relation(fields: [locationId], references: [id])
-  planning    OperationalPlanning @relation(fields: [planningId], references: [id])
+  planning    OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  images      Image[] // Relação com Imagens
 
   @@map("planning_targets")
 }
 
 model PlanningAssignment {
-  id            String              @id @default(cuid())
-  planningId    String              @map("planning_id")
-  userId        String              @map("user_id")
-  vehicleId     String?             @map("vehicle_id")
-  functions     OperationalFunction[] // This is the new many-to-many relation
-  planning      OperationalPlanning @relation(fields: [planningId], references: [id])
-  user          User                @relation(fields: [userId], references: [id])
-  vehicle       Vehicle?            @relation(fields: [vehicleId], references: [id])
+  id          String              @id @default(cuid())
+  planningId  String              @map("planning_id")
+  userId      String              @map("user_id")
+  vehicleId   String?             @map("vehicle_id")
+  functions   OperationalFunction[]
+  planning    OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id])
+  vehicle     Vehicle?            @relation(fields: [vehicleId], references: [id])
 
   @@map("planning_assignments")
 }
 
 model PlanningScheduleItem {
-  id          String              @id @default(cuid())
-  time        DateTime
-  activity    String
-  
-  planningId  String              @map("planning_id")
-  planning    OperationalPlanning @relation(fields: [planningId], references: [id])
+  id         String              @id @default(cuid())
+  time       DateTime
+  activity   String
+  planningId String              @map("planning_id")
+  planning   OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
 
   @@map("planning_schedule_items")
 }
 
 model MedicalPlan {
-  id                 String               @id @default(cuid())
+  id                 String              @id @default(cuid())
   procedures         String
-  planningId         String               @unique @map("planning_id")
-  hospitalLocationId String               @map("hospital_location_id")
-  ambulanceVehicleId String               @map("ambulance_vehicle_id")
-  ambulanceVehicle   Vehicle              @relation(fields: [ambulanceVehicleId], references: [id])
-  hospitalLocation   Location             @relation(fields: [hospitalLocationId], references: [id])
-  planning           OperationalPlanning  @relation(fields: [planningId], references: [id])
-
+  planningId         String              @unique @map("planning_id")
+  hospitalLocationId String              @map("hospital_location_id")
+  ambulanceVehicleId String              @map("ambulance_vehicle_id")
+  ambulanceVehicle   Vehicle             @relation(fields: [ambulanceVehicleId], references: [id])
+  hospitalLocation   Location            @relation(fields: [hospitalLocationId], references: [id])
+  planning           OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
 
   @@map("medical_plans")
 }
@@ -161,4 +162,31 @@ model RefreshToken {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model CommunicationsPlan {
+  id               String   @id @default(cuid())
+  operatorChannel   String
+  vehicleChannel String?  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  planningId       String   @unique
+  planning         OperationalPlanning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+
+  @@map("communications_plans")
+}
+
+model Image {
+  id               String          @id @default(cuid())
+  url              String          @db.Text
+  publicId         String          @unique
+  altText          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  planningTargetId String?
+  planningTarget   PlanningTarget? @relation(fields: [planningTargetId], references: [id], onDelete: Cascade)
+  locationId       String?
+  location         Location?       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@map("images")
 }

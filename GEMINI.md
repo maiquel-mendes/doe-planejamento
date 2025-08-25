@@ -47,20 +47,23 @@ The database schema has undergone a significant refactoring to move away from JS
 - `Vehicle`: id, prefix (unique), type, model, capacity, isActive, createdAt, updatedAt.
   - **Relations:** medicalPlans, assignments.
 - `Location`: id, name (unique), address, latitude, longitude, createdAt, updatedAt.
-  - **Relations:** medicalPlansAsHospital, targets.
+  - **Relations:** medicalPlansAsHospital, targets, images.
 - `OperationalPlanning`: id, status, priority, peculiarities (String?), createdById, responsibleId, createdAt, updatedAt.
-  - **Relations:** introduction (One-to-One), medicalPlan (One-to-One), createdBy (User), responsible (User), assignments (One-to-Many), scheduleItems (One-to-Many), targets (One-to-Many).
+  - **Relations:** introduction, medicalPlan, communicationsPlan, createdBy, responsible, assignments, scheduleItems, targets.
 - `IntroductionSection`: id, serviceOrderNumber (unique), operationType, description, supportUnit, mandateType, operationDate, operationTime, planningId.
   - **Relations:** planning (OperationalPlanning).
 - `PlanningTarget`: id, targetName, description (String?), locationId, planningId.
-  - **Relations:** location (Location), planning (OperationalPlanning).
-- `PlanningAssignment`: id, planningId, userId, vehicleId (String?), medicalPlanId (String?).
-  - **Relations:** functions (Many-to-Many with OperationalFunction), medicalPlan, planning, user, vehicle.
-- `PlanningScheduleItem`: id, time, activity, responsible, planningId.
-  - **Relations:** planning (OperationalPlanning).
+  - **Relations:** location, planning, images.
+- `PlanningAssignment`: id, planningId, userId, vehicleId (String?).
+  - **Relations:** functions, planning, user, vehicle.
+- `PlanningScheduleItem`: id, time, activity, planningId.
+  - **Relations:** planning.
 - `MedicalPlan`: id, procedures, planningId (unique), hospitalLocationId, ambulanceVehicleId.
-  - **Relations:** ambulanceVehicle (Vehicle), hospitalLocation (Location), planning (OperationalPlanning), aphAssignments.
-
+  - **Relations:** ambulanceVehicle, hospitalLocation, planning.
+- `CommunicationsPlan`: id, operatorChannel, vehicleChannel, planningId.
+  - **Relations:** planning.
+- `Image`: id, url, altText, planningTargetId, locationId.
+  - **Relations:** planningTarget, location.
 
 ## 5. Recurring Issues & Solutions
 - **"Maximum update depth exceeded" / Unstable Dependencies:** Often caused by unstable functions in `useEffect`/`useCallback` dependency arrays. Solution: Wrap functions in `useCallback` and ensure all dependencies (including `user` from `useAuth()`) are stable.
@@ -280,13 +283,23 @@ This section details a set of recent, interconnected changes to the "Quadro de F
     *   **Problem**: The `AssignmentRow` component was subject to unnecessary re-renders, and a key prop (`control`) was typed as `any`.
     *   **Solution**: Wrapped the `AssignmentRow` component in `React.memo` and memoized expensive calculations using the `useMemo` hook to improve performance. Corrected the `control` prop's type to use `Control<PlanningFormData>` from `react-hook-form` for better type safety.
 
+### 8.11 Image Upload Feature (Cloudinary)
+
+*   **Architecture**: Implemented a best-practice image handling architecture using Cloudinary for storage. The database only stores image URLs, not the files themselves.
+*   **Backend**: Created a secure signing endpoint at `pages/api/upload/sign.ts`. This endpoint uses the server-side `CLOUDINARY_API_SECRET` to generate a temporary, secure signature for upload requests, preventing unauthorized uploads.
+*   **Frontend**: Developed a reusable `ImageUploader` component in `components/ui/image-uploader.tsx`. This component handles the entire client-side upload flow, including user file selection, calling the backend for a signature, and uploading the file directly to Cloudinary.
+*   **Integration**: The `ImageUploader` was integrated into the `TargetsFormSection`. The form's state management (`use-operational-planning-form.ts`) was updated with a new `images` array in the `targets` schema, allowing each target to have multiple images associated with it.
+
 ## 9. Planned Enhancements
 
 This section outlines approved, upcoming features and refactorings.
 
 ### 9.1 Communications Plan Section
 
-*   **Requirement**: Re-introduce the "Comunicações" (Communications) section, which was lost during a previous database refactoring.
-*   **Proposed Solution**:
-    *   **Backend**: A new `CommunicationsPlan` model will be added to `prisma/schema.prisma` with a one-to-one relationship to `OperationalPlanning`. It will store structured data like radio channels and emergency contacts.
-    *   **Frontend**: A new `communications-form-section.tsx` component will be created to manage the UI for this data within the main planning form, consistent with other form sections.
+*   **Requirement**: Re-introduce the "Comunicações" (Communications) section.
+*   **Implementation**: A new `CommunicationsPlan` model was added to the Prisma schema. A corresponding `communications-form-section.tsx` component was created and integrated into the main planning form.
+
+### 9.2 Dedicated Location Management Page
+
+*   **Requirement**: Create a new top-level page for CRUD operations on `Location` entities.
+*   **Details**: This will allow for independent management of locations. As part of this future work, image upload functionality, similar to what was implemented for `PlanningTarget`, will be added directly to locations. This defers the "add images to locations" requirement until a proper UI is built for it.
