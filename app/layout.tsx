@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { ProtectedLayout } from "@/components/auth/protected-layout";
 import TanstackProvider from "@/components/tanstack-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <style>{`
 html {
@@ -32,12 +33,19 @@ html {
         `}</style>
       </head>
       <body>
-        <AuthProvider>
-          <TanstackProvider>
-            <ProtectedLayout>{children}</ProtectedLayout>
-          </TanstackProvider>
-        </AuthProvider>
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <TanstackProvider>
+              <ProtectedLayout>{children}</ProtectedLayout>
+            </TanstackProvider>
+          </AuthProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

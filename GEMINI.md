@@ -218,6 +218,8 @@ This is the most significant recent change, moving from a JSONB-heavy data model
         *   `PlanningAssignment` (One-to-Many with `OperationalPlanning`, Many-to-Many with `OperationalFunction`, One-to-One with `User`, One-to-One with `Vehicle`)
         *   `PlanningScheduleItem` (One-to-Many with `OperationalPlanning`)
         *   `MedicalPlan` (One-to-One with `OperationalPlanning`, One-to-One with `Location` for hospital, One-to-One with `Vehicle` for ambulance)
+        *   `CommunicationsPlan` (One-to-One with `OperationalPlanning`)
+        *   `Image` (One-to-Many with `PlanningTarget`, One-to-Many with `Location`)
         *   `Location` (New standalone model for reusable location data)
     *   **Impact:** Enhanced data integrity (enforced by database constraints), improved query performance, better type safety across the stack, and a clearer representation of business entities.
 
@@ -234,7 +236,7 @@ This is the most significant recent change, moving from a JSONB-heavy data model
     *   **Problem:** Existing API routes for plannings (`pages/api/plannings/index.ts`, `pages/api/plannings/[id].ts`) were designed for JSONB fields and simple CRUD.
     *   **Solution:** API routes for plannings have been significantly updated to handle the new relational data model:
         *   **Creation (POST):** Now uses nested `create` and `connectOrCreate` operations in Prisma to create the main `OperationalPlanning` record along with all its related entities (introduction, targets, assignments, schedule items, medical plan, locations).
-        *   **Update (PUT):** Implements complex transaction logic (`prisma.$transaction`) to manage updates across multiple related tables. This often involves `upsert` for one-to-one relations (like `introduction`, `medicalPlan`) and `deleteMany` followed by `createMany` for one-to-many relations (like `targets`, `assignments`, `scheduleItems`) to ensure data synchronization.
+        *   **Update (PUT):** Implements complex transaction logic (`prisma.$transaction`) to manage updates across multiple related tables. This often involves `upsert` for one-to-one relations (like `introduction`, `medicalPlan`) and `deleteMany` followed by `createMany` for one-to-many relations (like `targets`, `assignments`, `scheduleItems`) to ensure data synchronization).
         *   **Deletion (DELETE):** Now includes cascading deletes across related tables within a transaction to ensure all associated data is removed.
         *   **Fetching (GET):** All planning queries now use Prisma's `include` option to fetch the main planning record along with all its related nested data, providing a complete object to the frontend.
     *   **Impact:** Backend now fully supports the complex relational data model, ensuring data consistency and integrity during all CRUD operations.
@@ -252,7 +254,7 @@ This is the most significant recent change, moving from a JSONB-heavy data model
 
 ### 8.8 Bug Fixes & Data Integrity
 
-*   **"Uncontrolled to Controlled Input" Error (Targets Tab):**
+*   **"Uncontrolled to controlled Input" Error (Targets Tab):**
     *   **Problem:** Input fields for "coordenadas" and "descrição" in the Targets tab were causing React's "uncontrolled to controlled" error due to `undefined` initial values.
     *   **Solution:** Explicitly initialized `coordinates` and `description` to empty strings (`''`) in the `blankTarget()` helper function within `hooks/use-operational-planning-form.ts`.
 
@@ -261,7 +263,6 @@ This is the most significant recent change, moving from a JSONB-heavy data model
     *   **Solution:**
         *   Modified `pages/api/plannings/index.ts` to fetch the authenticated user's name from the database and use it for `responsibleName`.
         *   Used an `omit` utility function (added to `lib/utils.ts`) in `app/planejamento/page.tsx` to ensure the `id` field is completely omitted when sending new planning data to the API, allowing Prisma to generate a UUID.
-*
 
 ### 8.10 "Quadro de Funções" Rules and Fixes
 
@@ -289,6 +290,19 @@ This section details a set of recent, interconnected changes to the "Quadro de F
 *   **Backend**: Created a secure signing endpoint at `pages/api/upload/sign.ts`. This endpoint uses the server-side `CLOUDINARY_API_SECRET` to generate a temporary, secure signature for upload requests, preventing unauthorized uploads.
 *   **Frontend**: Developed a reusable `ImageUploader` component in `components/ui/image-uploader.tsx`. This component handles the entire client-side upload flow, including user file selection, calling the backend for a signature, and uploading the file directly to Cloudinary.
 *   **Integration**: The `ImageUploader` was integrated into the `TargetsFormSection`. The form's state management (`use-operational-planning-form.ts`) was updated with a new `images` array in the `targets` schema, allowing each target to have multiple images associated with it.
+
+*   **Image Deletion**: Implemented secure image deletion from both Cloudinary and the application's database. This involved adding a `publicId` field to the `Image` model, creating a dedicated `DELETE /api/images/[id]` endpoint, and updating the `TargetsFormSection` to use this API for removing saved images.
+
+### 8.12 Dark Theme Implementation
+
+*   **Integration of `next-themes`:**
+    *   The `ThemeProvider` from `next-themes` has been integrated into `app/layout.tsx` to provide theme switching capabilities.
+    *   The `<html>` tag now includes `suppressHydrationWarning` to prevent hydration mismatches.
+    *   The `ThemeProvider` is configured to use `attribute="class"`, `defaultTheme="system"`, and `enableSystem` for seamless theme management.
+*   **Tailwind CSS Configuration:**
+    *   A `tailwind.config.js` file has been created in the project root with `darkMode: 'class'` to enable class-based dark mode styling.
+*   **Theme Toggle Component:**
+    *   A reusable `ThemeToggle` component has been created in `components/ui/theme-toggle.tsx` to allow users to switch between light, dark, and system themes.
 
 ## 9. Planned Enhancements
 
